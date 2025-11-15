@@ -1,5 +1,5 @@
-import play from 'play-dl';
-import { createAudioResource, StreamType } from '@discordjs/voice';
+import { Player, SearchResult, Track as DPTrack, QueryType } from 'discord-player';
+import { Client } from 'discord.js';
 import { logger } from '../../utils/logger';
 import { config } from '../../config/constants';
 
@@ -13,53 +13,80 @@ export interface Track {
 }
 
 export class MusicStreamingService {
-  constructor() {
-    this.initializePlayDl();
+  private player: Player;
+  private initialized: boolean = false;
+
+  constructor(client: Client) {
+    this.player = new Player(client, {
+      skipFFmpeg: false,
+      ytdlOptions: {
+        quality: 'highestaudio',
+        highWaterMark: 1 << 25,
+      },
+    });
+
+    this.initializePlayer();
   }
 
-  private async initializePlayDl() {
-    // Set up Spotify credentials if available
-    if (config.spotify.clientId && config.spotify.clientSecret) {
-      try {
-        await play.setToken({
-          spotify: {
-            client_id: config.spotify.clientId,
-            client_secret: config.spotify.clientSecret,
-            refresh_token: '',
-            market: 'US',
-          },
-        });
-        logger.info('Spotify credentials configured');
-      } catch (error) {
-        logger.warn('Failed to configure Spotify credentials', error);
+  private async initializePlayer() {
+    try {
+      // Load default extractors (YouTube, Spotify, SoundCloud, etc.)
+      await this.player.extractors.loadDefault((ext) => {
+        // Filter out extractors we don't want
+        return ext !== 'YouTubeExtractor'; // We'll use the default YouTube extractor
+      });
+
+      // Configure Spotify if credentials are available
+      if (config.spotify.clientId && config.spotify.clientSecret) {
+        // Spotify configuration is handled by the extractor automatically
+        logger.info('Spotify credentials available for discord-player');
       }
+
+      this.initialized = true;
+      logger.info('Discord-player initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize discord-player', error);
+      this.initialized = false;
     }
   }
 
   /**
-   * Get track information from URL
+   * Get the discord-player instance
    */
-  async getTrack(url: string, requestedBy: string): Promise<Track | null> {
+  getPlayer(): Player {
+    return this.player;
+  }
+
+  /**
+   * Check if player is initialized
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
+   * Get track information from URL or search query
+   */
+  async getTrack(query: string, requestedBy: string): Promise<Track | null> {
     try {
-      // Validate URL
-      if (!play.validate(url)) {
-        logger.warn('Invalid URL provided', { url });
+      if (!this.initialized) {
+        logger.warn('Player not initialized yet');
         return null;
       }
 
-      const type = play.validate(url);
+      const searchResult = await this.player.search(query, {
+        requestedBy: requestedBy,
+      });
 
-      if (type === 'yt_video') {
-        return await this.getYouTubeTrack(url, requestedBy);
-      } else if (type === 'sp_track') {
-        return await this.getSpotifyTrack(url, requestedBy);
-      } else if (type === 'so_track') {
-        return await this.getSoundCloudTrack(url, requestedBy);
+      if (!searchResult || !searchResult.hasTracks()) {
+        logger.warn('No tracks found', { query });
+        return null;
       }
 
-      return null;
+      const track = searchResult.tracks[0];
+      return this.convertTrack(track, requestedBy);
     } catch (error) {
-      logger.error('Error getting track info', { error, url });
+      logger.error('Error getting track info', { error, query });
       return null;
     }
   }
@@ -69,17 +96,27 @@ export class MusicStreamingService {
    */
   async getPlaylist(url: string, requestedBy: string): Promise<Track[]> {
     try {
-      const type = play.validate(url);
-
-      if (type === 'yt_playlist') {
-        return await this.getYouTubePlaylist(url, requestedBy);
-      } else if (type === 'sp_playlist' || type === 'sp_album') {
-        return await this.getSpotifyPlaylist(url, requestedBy);
-      } else if (type === 'so_playlist') {
-        return await this.getSoundCloudPlaylist(url, requestedBy);
+      if (!this.initialized) {
+        logger.warn('Player not initialized yet');
+        return [];
       }
 
-      return [];
+      const searchResult = await this.player.search(url, {
+        requestedBy: requestedBy,
+      });
+
+      if (!searchResult || !searchResult.hasTracks()) {
+        logger.warn('No tracks found in playlist', { url });
+        return [];
+      }
+
+      // If it's a playlist, return all tracks
+      if (searchResult.playlist) {
+        return searchResult.tracks.map((track) => this.convertTrack(track, requestedBy));
+      }
+
+      // Single track, return as array
+      return [this.convertTrack(searchResult.tracks[0], requestedBy)];
     } catch (error) {
       logger.error('Error getting playlist', { error, url });
       return [];
@@ -87,191 +124,84 @@ export class MusicStreamingService {
   }
 
   /**
-   * Get YouTube track
-   */
-  private async getYouTubeTrack(url: string, requestedBy: string): Promise<Track> {
-    const info = await play.video_info(url);
-    const video = info.video_details;
-
-    return {
-      title: video.title || 'Unknown',
-      url: video.url,
-      duration: video.durationInSec,
-      platform: 'youtube',
-      requestedBy,
-      thumbnail: video.thumbnails[0]?.url,
-    };
-  }
-
-  /**
-   * Get YouTube playlist
-   */
-  private async getYouTubePlaylist(url: string, requestedBy: string): Promise<Track[]> {
-    const playlist = await play.playlist_info(url, { incomplete: true });
-    const videos = await playlist.all_videos();
-
-    return videos.map((video) => ({
-      title: video.title || 'Unknown',
-      url: video.url,
-      duration: video.durationInSec,
-      platform: 'youtube',
-      requestedBy,
-      thumbnail: video.thumbnails[0]?.url,
-    }));
-  }
-
-  /**
-   * Get Spotify track (converts to YouTube)
-   */
-  private async getSpotifyTrack(url: string, requestedBy: string): Promise<Track | null> {
-    const spotifyData = await play.spotify(url);
-
-    if (!spotifyData || spotifyData.type !== 'track') {
-      return null;
-    }
-
-    // Search for equivalent on YouTube
-    const searchQuery = `${spotifyData.name} ${spotifyData.artists[0]?.name || ''}`;
-    const searchResults = await play.search(searchQuery, { limit: 1, source: { youtube: 'video' } });
-
-    if (searchResults.length === 0) {
-      logger.warn('No YouTube match found for Spotify track', { url });
-      return null;
-    }
-
-    const video = searchResults[0];
-
-    return {
-      title: spotifyData.name,
-      url: video.url,
-      duration: spotifyData.durationInSec,
-      platform: 'spotify',
-      requestedBy,
-      thumbnail: spotifyData.thumbnail?.url,
-    };
-  }
-
-  /**
-   * Get Spotify playlist/album (converts to YouTube)
-   */
-  private async getSpotifyPlaylist(url: string, requestedBy: string): Promise<Track[]> {
-    const spotifyData = await play.spotify(url);
-
-    if (!spotifyData) {
-      return [];
-    }
-
-    const tracks: Track[] = [];
-    const spotifyTracks = 'tracks' in spotifyData ? spotifyData.tracks : [];
-
-    // Limit to 50 tracks to avoid rate limiting
-    const limitedTracks = spotifyTracks.slice(0, 50);
-
-    for (const track of limitedTracks) {
-      try {
-        const searchQuery = `${track.name} ${track.artists[0]?.name || ''}`;
-        const searchResults = await play.search(searchQuery, { limit: 1, source: { youtube: 'video' } });
-
-        if (searchResults.length > 0) {
-          const video = searchResults[0];
-          tracks.push({
-            title: track.name,
-            url: video.url,
-            duration: track.durationInSec,
-            platform: 'spotify',
-            requestedBy,
-            thumbnail: track.thumbnail?.url,
-          });
-        }
-      } catch (error) {
-        logger.warn('Failed to convert Spotify track', { track: track.name });
-      }
-    }
-
-    return tracks;
-  }
-
-  /**
-   * Get SoundCloud track
-   */
-  private async getSoundCloudTrack(url: string, requestedBy: string): Promise<Track | null> {
-    const info = await play.soundcloud(url);
-
-    if (!info || info.type !== 'track') {
-      return null;
-    }
-
-    return {
-      title: info.name,
-      url: info.url,
-      duration: info.durationInSec,
-      platform: 'soundcloud',
-      requestedBy,
-      thumbnail: info.thumbnail,
-    };
-  }
-
-  /**
-   * Get SoundCloud playlist
-   */
-  private async getSoundCloudPlaylist(url: string, requestedBy: string): Promise<Track[]> {
-    const info = await play.soundcloud(url);
-
-    if (!info || info.type !== 'playlist') {
-      return [];
-    }
-
-    return info.tracks.map((track) => ({
-      title: track.name,
-      url: track.url,
-      duration: track.durationInSec,
-      platform: 'soundcloud',
-      requestedBy,
-      thumbnail: track.thumbnail,
-    }));
-  }
-
-  /**
-   * Create audio resource for streaming
-   */
-  async createAudioStream(track: Track) {
-    try {
-      logger.info('Creating audio stream', { title: track.title, platform: track.platform });
-
-      const stream = await play.stream(track.url, {
-        discordPlayerCompatibility: true,
-      });
-
-      const resource = createAudioResource(stream.stream, {
-        inputType: stream.type,
-        inlineVolume: true,
-      });
-
-      return resource;
-    } catch (error) {
-      logger.error('Failed to create audio stream', { error, track });
-      throw error;
-    }
-  }
-
-  /**
    * Search for tracks
    */
-  async search(query: string, limit: number = 5): Promise<Track[]> {
+  async search(query: string, limit: number = 5, requestedBy: string = ''): Promise<Track[]> {
     try {
-      const results = await play.search(query, { limit, source: { youtube: 'video' } });
+      if (!this.initialized) {
+        logger.warn('Player not initialized yet');
+        return [];
+      }
 
-      return results.map((video) => ({
-        title: video.title || 'Unknown',
-        url: video.url,
-        duration: video.durationInSec,
-        platform: 'youtube',
-        requestedBy: '',
-        thumbnail: video.thumbnails[0]?.url,
-      }));
+      const searchResult = await this.player.search(query, {
+        requestedBy: requestedBy,
+        searchEngine: QueryType.AUTO,
+      });
+
+      if (!searchResult || !searchResult.hasTracks()) {
+        logger.warn('No search results', { query });
+        return [];
+      }
+
+      return searchResult.tracks
+        .slice(0, limit)
+        .map((track) => this.convertTrack(track, requestedBy));
     } catch (error) {
       logger.error('Search failed', { error, query });
       return [];
+    }
+  }
+
+  /**
+   * Convert discord-player Track to our Track interface
+   */
+  private convertTrack(dpTrack: DPTrack, requestedBy: string): Track {
+    return {
+      title: dpTrack.title,
+      url: dpTrack.url,
+      duration: Math.floor(dpTrack.durationMS / 1000),
+      platform: this.getPlatform(dpTrack),
+      requestedBy: requestedBy,
+      thumbnail: dpTrack.thumbnail,
+    };
+  }
+
+  /**
+   * Get platform name from track
+   */
+  private getPlatform(track: DPTrack): string {
+    const source = track.raw?.source || track.source;
+
+    if (typeof source === 'string') {
+      const sourceLower = source.toLowerCase();
+      if (sourceLower.includes('youtube')) return 'youtube';
+      if (sourceLower.includes('spotify')) return 'spotify';
+      if (sourceLower.includes('soundcloud')) return 'soundcloud';
+    }
+
+    // Fallback to checking URL
+    if (track.url.includes('youtube.com') || track.url.includes('youtu.be')) {
+      return 'youtube';
+    }
+    if (track.url.includes('spotify.com')) {
+      return 'spotify';
+    }
+    if (track.url.includes('soundcloud.com')) {
+      return 'soundcloud';
+    }
+
+    return 'unknown';
+  }
+
+  /**
+   * Validate if a query is a URL
+   */
+  isURL(query: string): boolean {
+    try {
+      new URL(query);
+      return true;
+    } catch {
+      return false;
     }
   }
 }

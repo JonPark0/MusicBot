@@ -324,7 +324,7 @@ docker-compose restart tts-service
 - 사용자가 음성 채널에 있는지
 - 음악 채널이 활성화되어 있는지
 - FFmpeg가 설치되어 있는지 (Docker 이미지에 포함됨)
-- play-dl이 URL에 접근할 수 있는지
+- discord-player v7이 URL에 접근할 수 있는지
 
 ### 데이터베이스 연결 문제
 

@@ -51,7 +51,7 @@ Docker Compose 스택
 - **Discord Bot**: Node.js, TypeScript, discord.js v14
 - **TTS 서비스**: Python, FastAPI, Coqui XTTS-v2, PyTorch
 - **번역**: Google Gemini 2.0 Flash, LibreTranslate
-- **음악**: play-dl, FFmpeg, @discordjs/voice
+- **음악**: discord-player v7, FFmpeg, @discordjs/voice
 - **데이터베이스**: PostgreSQL 15
 - **캐시**: Redis 7
 - **배포**: Docker, Docker Compose
@@ -144,7 +144,7 @@ MIT License - 자세한 내용은 [LICENSE](LICENSE) 파일 참조
 - [Coqui TTS](https://github.com/coqui-ai/TTS) - XTTS-v2 모델
 - [Google Gemini](https://ai.google.dev/) - AI 기반 번역
 - [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) - 오픈소스 번역
-- [play-dl](https://github.com/play-dl/play-dl) - 음악 스트리밍 라이브러리
+- [discord-player v7](https://github.com/discord-player v7/discord-player v7) - 음악 스트리밍 라이브러리
 
 ## 지원
 

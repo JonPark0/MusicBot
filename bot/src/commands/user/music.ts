@@ -1,12 +1,9 @@
-import { SlashCommandBuilder, CommandInteraction, GuildMember } from 'discord.js';
+import { SlashCommandBuilder, CommandInteraction, GuildMember, VoiceChannel } from 'discord.js';
 import { logger } from '../../utils/logger';
 import { EmbedFactory } from '../../utils/embeds';
-import { musicPlayer } from '../../services/music/player';
-import { MusicStreamingService } from '../../services/music/streaming';
+import { getMusicPlayer } from '../../services/music/player';
 import { LoopMode } from '../../services/music/queue';
 import { PermissionManager } from '../../middleware/permissions';
-
-const streamingService = new MusicStreamingService();
 
 export class MusicCommand {
   data = new SlashCommandBuilder()
@@ -152,9 +149,9 @@ export class MusicCommand {
   private async handlePlay(interaction: CommandInteraction) {
     await interaction.deferReply();
 
-    const url = interaction.options.get('url')?.value as string;
+    const query = interaction.options.get('url')?.value as string;
     const member = interaction.member as GuildMember;
-    const voiceChannel = member.voice.channel;
+    const voiceChannel = member.voice.channel as VoiceChannel;
 
     if (!voiceChannel) {
       await interaction.editReply({
@@ -169,73 +166,42 @@ export class MusicCommand {
     }
 
     try {
-      // Check if it's a playlist
-      const isPlaylist = url.includes('playlist') || url.includes('album') || url.includes('sets');
+      const musicPlayer = getMusicPlayer();
+      const result = await musicPlayer.play(voiceChannel, query, member);
 
-      if (isPlaylist) {
-        // Get playlist tracks
-        const tracks = await streamingService.getPlaylist(url, interaction.user.id);
+      if (!result) {
+        await interaction.editReply({
+          embeds: [
+            EmbedFactory.error(
+              'Track Not Found',
+              'Could not find or load the requested track.'
+            ),
+          ],
+        });
+        return;
+      }
 
-        if (tracks.length === 0) {
-          await interaction.editReply({
-            embeds: [
-              EmbedFactory.error('Playlist Empty', 'No tracks found in the provided playlist.'),
-            ],
-          });
-          return;
-        }
-
-        // Add to queue
-        await musicPlayer.playPlaylist(voiceChannel, tracks);
-
+      // Check if result is an array (playlist) or single track
+      if (Array.isArray(result)) {
+        // Playlist
         await interaction.editReply({
           embeds: [
             EmbedFactory.success(
               'Playlist Added',
-              `Added ${tracks.length} tracks to the queue from playlist.`
+              `Added ${result.length} tracks to the queue.`
             ),
           ],
         });
       } else {
-        // Check if it's a URL or search query
-        let track;
+        // Single track
+        const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
 
-        if (url.startsWith('http://') || url.startsWith('https://')) {
-          // It's a URL
-          track = await streamingService.getTrack(url, interaction.user.id);
-        } else {
-          // It's a search query
-          const results = await streamingService.search(url, 1);
-          if (results.length > 0) {
-            track = results[0];
-            track.requestedBy = interaction.user.id;
-          }
-        }
-
-        if (!track) {
-          await interaction.editReply({
-            embeds: [
-              EmbedFactory.error(
-                'Track Not Found',
-                'Could not find or load the requested track.'
-              ),
-            ],
-          });
-          return;
-        }
-
-        // Add to queue
-        await musicPlayer.play(voiceChannel, track);
-
-        const queue = musicPlayer.getQueue(interaction.guildId!);
-        const queuePosition = queue ? queue.size() : 0;
-
-        if (queuePosition > 0) {
+        if (queueSize > 0) {
           await interaction.editReply({
             embeds: [
               EmbedFactory.success(
                 'Track Added to Queue',
-                `**${track.title}**\nPosition in queue: ${queuePosition}`
+                `**${result.title}**\nPosition in queue: ${queueSize + 1}`
               ),
             ],
           });
@@ -243,10 +209,10 @@ export class MusicCommand {
           await interaction.editReply({
             embeds: [
               EmbedFactory.nowPlaying(
-                track.title,
-                track.url,
-                track.platform,
-                track.duration,
+                result.title,
+                result.url,
+                result.platform,
+                result.duration,
                 interaction.user
               ),
             ],
@@ -264,6 +230,7 @@ export class MusicCommand {
   }
 
   private async handlePause(interaction: CommandInteraction) {
+    const musicPlayer = getMusicPlayer();
     const paused = musicPlayer.pause(interaction.guildId!);
 
     if (paused) {
@@ -279,6 +246,7 @@ export class MusicCommand {
   }
 
   private async handleResume(interaction: CommandInteraction) {
+    const musicPlayer = getMusicPlayer();
     const resumed = musicPlayer.resume(interaction.guildId!);
 
     if (resumed) {
@@ -294,11 +262,12 @@ export class MusicCommand {
   }
 
   private async handleSkip(interaction: CommandInteraction) {
-    const queue = musicPlayer.getQueue(interaction.guildId!);
+    const musicPlayer = getMusicPlayer();
+    const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
 
-    if (!queue || queue.isEmpty()) {
+    if (queueSize === 0 && !musicPlayer.isPlaying(interaction.guildId!)) {
       await interaction.reply({
-        embeds: [EmbedFactory.error('Queue Empty', 'No more tracks in the queue.')],
+        embeds: [EmbedFactory.error('Queue Empty', 'No tracks in the queue.')],
         ephemeral: true,
       });
       return;
@@ -312,6 +281,7 @@ export class MusicCommand {
   }
 
   private async handleStop(interaction: CommandInteraction) {
+    const musicPlayer = getMusicPlayer();
     musicPlayer.stop(interaction.guildId!);
 
     await interaction.reply({
@@ -320,9 +290,10 @@ export class MusicCommand {
   }
 
   private async handleQueue(interaction: CommandInteraction) {
-    const queue = musicPlayer.getQueue(interaction.guildId!);
+    const musicPlayer = getMusicPlayer();
+    const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
 
-    if (!queue || queue.isEmpty()) {
+    if (queueSize === 0) {
       await interaction.reply({
         embeds: [EmbedFactory.info('Queue', 'Queue is empty.')],
         ephemeral: true,
@@ -331,26 +302,27 @@ export class MusicCommand {
     }
 
     const page = (interaction.options.get('page')?.value as number) || 1;
-    const { tracks, totalPages } = queue.getPaginated(page, 10);
+    const { tracks, totalPages } = musicPlayer.getPaginatedTracks(interaction.guildId!, page, 10);
 
     const embed = EmbedFactory.queue(
       tracks.map((track, index) => ({
         title: track.title,
         duration: track.duration,
-        requestedBy: `<@${track.requestedBy}>`,
+        requestedBy: track.requestedBy ? `<@${track.requestedBy}>` : 'Unknown',
       })),
       page,
       totalPages
     );
 
     // Add queue info to embed
-    const totalDuration = queue.getTotalDuration();
+    const totalDuration = musicPlayer.getQueueDuration(interaction.guildId!);
     const hours = Math.floor(totalDuration / 3600);
     const minutes = Math.floor((totalDuration % 3600) / 60);
+    const loopMode = musicPlayer.getLoopMode(interaction.guildId!);
 
     embed.addFields({
       name: 'Queue Info',
-      value: `Total tracks: ${queue.size()}\nTotal duration: ${hours}h ${minutes}m\nLoop: ${queue.getLoopMode()}`,
+      value: `Total tracks: ${queueSize}\nTotal duration: ${hours}h ${minutes}m\nLoop: ${loopMode}`,
     });
 
     await interaction.reply({
@@ -360,6 +332,7 @@ export class MusicCommand {
   }
 
   private async handleNowPlaying(interaction: CommandInteraction) {
+    const musicPlayer = getMusicPlayer();
     const track = musicPlayer.getNowPlaying(interaction.guildId!);
 
     if (!track) {
@@ -370,15 +343,14 @@ export class MusicCommand {
       return;
     }
 
-    const queue = musicPlayer.getQueue(interaction.guildId!);
-    const volume = queue?.getVolume() || 50;
+    const volume = musicPlayer.getVolume(interaction.guildId!);
 
     const embed = EmbedFactory.nowPlaying(
       track.title,
       track.url,
       track.platform,
       track.duration,
-      await interaction.client.users.fetch(track.requestedBy)
+      track.requestedBy ? await interaction.client.users.fetch(track.requestedBy) : interaction.user
     );
 
     embed.addFields({ name: 'Volume', value: `${volume}%`, inline: true });
@@ -394,6 +366,7 @@ export class MusicCommand {
 
   private async handleVolume(interaction: CommandInteraction) {
     const level = interaction.options.get('level')?.value as number;
+    const musicPlayer = getMusicPlayer();
 
     musicPlayer.setVolume(interaction.guildId!, level);
 
@@ -403,9 +376,10 @@ export class MusicCommand {
   }
 
   private async handleShuffle(interaction: CommandInteraction) {
-    const queue = musicPlayer.getQueue(interaction.guildId!);
+    const musicPlayer = getMusicPlayer();
+    const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
 
-    if (!queue || queue.isEmpty()) {
+    if (queueSize === 0) {
       await interaction.reply({
         embeds: [EmbedFactory.error('Queue Empty', 'Nothing to shuffle.')],
         ephemeral: true,
@@ -413,7 +387,7 @@ export class MusicCommand {
       return;
     }
 
-    queue.shuffle();
+    musicPlayer.shuffle(interaction.guildId!);
 
     await interaction.reply({
       embeds: [EmbedFactory.success('Shuffled', 'Queue has been shuffled.')],
@@ -422,9 +396,9 @@ export class MusicCommand {
 
   private async handleLoop(interaction: CommandInteraction) {
     const mode = interaction.options.get('mode')?.value as string;
-    const queue = musicPlayer.getQueue(interaction.guildId!);
+    const musicPlayer = getMusicPlayer();
 
-    if (!queue) {
+    if (!musicPlayer.isPlaying(interaction.guildId!)) {
       await interaction.reply({
         embeds: [EmbedFactory.error('Not Playing', 'Nothing is currently playing.')],
         ephemeral: true,
@@ -433,7 +407,7 @@ export class MusicCommand {
     }
 
     const loopMode = mode as LoopMode;
-    queue.setLoopMode(loopMode);
+    musicPlayer.setLoopMode(interaction.guildId!, loopMode);
 
     const modeText = {
       [LoopMode.OFF]: 'Off',
@@ -447,10 +421,12 @@ export class MusicCommand {
   }
 
   private async handleRemove(interaction: CommandInteraction) {
-    const position = (interaction.options.get('position')?.value as number) - 1;
-    const queue = musicPlayer.getQueue(interaction.guildId!);
+    const position = interaction.options.get('position')?.value as number;
+    const musicPlayer = getMusicPlayer();
 
-    if (!queue) {
+    const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
+
+    if (queueSize === 0) {
       await interaction.reply({
         embeds: [EmbedFactory.error('Queue Empty', 'Queue is empty.')],
         ephemeral: true,
@@ -458,7 +434,7 @@ export class MusicCommand {
       return;
     }
 
-    const removed = queue.remove(position);
+    const removed = musicPlayer.removeTrack(interaction.guildId!, position);
 
     if (!removed) {
       await interaction.reply({
@@ -469,7 +445,7 @@ export class MusicCommand {
     }
 
     await interaction.reply({
-      embeds: [EmbedFactory.success('Track Removed', `Removed: **${removed.title}**`)],
+      embeds: [EmbedFactory.success('Track Removed', `Removed track at position ${position}`)],
     });
   }
 }

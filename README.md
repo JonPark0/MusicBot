@@ -51,7 +51,7 @@ Docker Compose Stack
 - **Discord Bot**: Node.js, TypeScript, discord.js v14
 - **TTS Service**: Python, FastAPI, Coqui XTTS-v2, PyTorch
 - **Translation**: Google Gemini 2.0 Flash, LibreTranslate
-- **Music**: play-dl, FFmpeg, @discordjs/voice
+- **Music**: discord-player v7, FFmpeg, @discordjs/voice
 - **Database**: PostgreSQL 15
 - **Cache**: Redis 7
 - **Deployment**: Docker, Docker Compose
@@ -144,7 +144,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - [Coqui TTS](https://github.com/coqui-ai/TTS) - XTTS-v2 model
 - [Google Gemini](https://ai.google.dev/) - AI-powered translation
 - [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) - Open-source translation
-- [play-dl](https://github.com/play-dl/play-dl) - Music streaming library
+- [discord-player](https://github.com/Androz2091/discord-player) - Music streaming library
 
 ## Support
 

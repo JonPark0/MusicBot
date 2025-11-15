@@ -325,7 +325,7 @@ docker-compose restart tts-service
 - User is in a voice channel
 - Music channel is enabled
 - FFmpeg is installed (included in Docker image)
-- play-dl can access the URL
+- discord-player v7 can access the URL
 
 **Test streaming:**
 ```bash

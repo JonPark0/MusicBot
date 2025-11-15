@@ -5,7 +5,7 @@ import { db } from './database/client';
 import { cache } from './utils/cache';
 import { InteractionHandler } from './handlers/interactionHandler';
 import { MessageHandler } from './handlers/messageHandler';
-import { musicPlayer } from './services/music/player';
+import { initializeMusicPlayer, getMusicPlayer } from './services/music/player';
 import { ttsPlayer } from './services/tts/player';
 
 // Import commands
@@ -79,6 +79,10 @@ class DiscordBot {
       logger.info(`Bot logged in as ${this.client.user?.tag}`);
       logger.info(`Serving ${this.client.guilds.cache.size} guilds`);
 
+      // Initialize music player
+      initializeMusicPlayer(this.client);
+      logger.info('Music player initialized');
+
       // Check database connection
       const dbHealthy = await db.healthCheck();
       if (dbHealthy) {
@@ -110,7 +114,12 @@ class DiscordBot {
         logger.info(`Bot removed from guild: ${guild.name} (${guild.id})`);
 
         // Stop music player if active
-        musicPlayer.stop(guild.id);
+        try {
+          const musicPlayer = getMusicPlayer();
+          musicPlayer.stop(guild.id);
+        } catch (error) {
+          logger.debug('Music player not initialized yet');
+        }
 
         // Stop TTS player if active
         ttsPlayer.leaveChannel(guild.id);
