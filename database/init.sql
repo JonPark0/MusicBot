@@ -153,22 +153,35 @@ CREATE TABLE IF NOT EXISTS guild_config (
 -- Indexes for Performance
 -- ============================================
 
+-- Translation indexes
 CREATE INDEX idx_translation_channels_guild ON translation_channels(guild_id);
 CREATE INDEX idx_translation_channels_source ON translation_channels(source_channel_id);
 CREATE INDEX idx_translation_channels_target ON translation_channels(target_channel_id);
+CREATE INDEX idx_translation_channels_lookup ON translation_channels(guild_id, source_channel_id, enabled);
+CREATE INDEX idx_translation_cache_hash ON translation_cache(text_hash, source_lang, target_lang);
+CREATE INDEX idx_translation_cache_created ON translation_cache(created_at);
 
+-- TTS indexes
 CREATE INDEX idx_tts_channels_guild ON tts_channels(guild_id);
 CREATE INDEX idx_tts_channels_channel ON tts_channels(channel_id);
-
+CREATE INDEX idx_tts_channels_lookup ON tts_channels(guild_id, channel_id, enabled);
 CREATE INDEX idx_user_voices_user ON user_voices(user_id);
 CREATE INDEX idx_user_voices_default ON user_voices(user_id, is_default) WHERE is_default = true;
+CREATE INDEX idx_tts_history_guild_user ON tts_history(guild_id, user_id);
+CREATE INDEX idx_tts_history_generated ON tts_history(generated_at DESC);
 
+-- Music indexes
 CREATE INDEX idx_music_channels_guild ON music_channels(guild_id);
 CREATE INDEX idx_music_channels_channel ON music_channels(channel_id);
-
+CREATE INDEX idx_music_channels_lookup ON music_channels(guild_id, channel_id, enabled);
 CREATE INDEX idx_music_history_guild ON music_history(guild_id);
 CREATE INDEX idx_music_history_user ON music_history(user_id);
 CREATE INDEX idx_music_history_played_at ON music_history(played_at DESC);
+CREATE INDEX idx_music_history_platform ON music_history(platform);
+
+-- Permission indexes
+CREATE INDEX idx_command_permissions_guild ON command_permissions(guild_id);
+CREATE INDEX idx_command_permissions_lookup ON command_permissions(guild_id, command_name);
 
 -- ============================================
 -- Functions & Triggers

@@ -23,14 +23,21 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       libretranslate:
-        condition: service_started
+        condition: service_healthy
       tts-service:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./data/audio:/app/audio
+      - ./logs/bot:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - discord-network
 
@@ -44,12 +51,14 @@ services:
     environment:
       - REDIS_URL=${REDIS_URL}
       - DATABASE_URL=${DATABASE_URL}
+      - MAX_CACHE_SIZE_GB=10
+      - CACHE_CLEANUP_HOURS=24
     volumes:
       - ./data/voices:/app/voices
       - ./data/tts-cache:/app/cache
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     # GPU 사용을 원하면 아래 주석 해제
     # deploy:
     #   resources:
@@ -58,6 +67,12 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     networks:
       - discord-network
 
@@ -69,10 +84,17 @@ services:
     environment:
       - LT_LOAD_ONLY=en,ko,ja,zh,es,fr,de,ru,pt,it
       - LT_THREADS=4
+      - LT_API_KEYS=true
     volumes:
-      - ./data/libretranslate:/home/libretranslate/.local
-    ports:
-      - "5000:5000"
+      - libretranslate-data:/home/libretranslate/.local
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/languages"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     networks:
       - discord-network
 
@@ -88,8 +110,8 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -103,11 +125,16 @@ services:
     image: redis:7-alpine
     container_name: discord-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
     volumes:
       - redis-data:/data
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     networks:
       - discord-network
 
@@ -116,7 +143,10 @@ volumes:
     driver: local
   redis-data:
     driver: local
+  libretranslate-data:
+    driver: local
 
 networks:
   discord-network:
     driver: bridge
+    internal: false

@@ -5,6 +5,8 @@ import { db } from './database/client';
 import { cache } from './utils/cache';
 import { InteractionHandler } from './handlers/interactionHandler';
 import { MessageHandler } from './handlers/messageHandler';
+import { musicPlayer } from './services/music/player';
+import { ttsPlayer } from './services/tts/player';
 
 // Import commands
 import { TranslateAdminCommand } from './commands/admin/translate-admin';
@@ -13,6 +15,28 @@ import { MusicAdminCommand } from './commands/admin/music-admin';
 import { TranslateCommand } from './commands/user/translate';
 import { TTSCommand } from './commands/user/tts';
 import { MusicCommand } from './commands/user/music';
+
+// Validate required environment variables
+function validateEnvironment() {
+  const required = [
+    'DISCORD_TOKEN',
+    'DISCORD_CLIENT_ID',
+    'GEMINI_API_KEY',
+    'DATABASE_URL',
+    'REDIS_URL',
+  ];
+
+  const missing = required.filter((key) => !process.env[key]);
+
+  if (missing.length > 0) {
+    logger.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
+  logger.info('Environment validation passed');
+}
+
+validateEnvironment();
 
 class DiscordBot {
   private client: Client;
@@ -65,11 +89,36 @@ class DiscordBot {
     });
 
     this.client.on('interactionCreate', async (interaction) => {
-      await this.interactionHandler.handleInteraction(interaction);
+      try {
+        await this.interactionHandler.handleInteraction(interaction);
+      } catch (error) {
+        logger.error('Unhandled error in interaction handler', error);
+      }
     });
 
     this.client.on('messageCreate', async (message) => {
-      await this.messageHandler.handleMessage(message);
+      try {
+        await this.messageHandler.handleMessage(message);
+      } catch (error) {
+        logger.error('Unhandled error in message handler', error);
+      }
+    });
+
+    // Cleanup resources when bot leaves a guild
+    this.client.on('guildDelete', async (guild) => {
+      try {
+        logger.info(`Bot removed from guild: ${guild.name} (${guild.id})`);
+
+        // Stop music player if active
+        musicPlayer.stop(guild.id);
+
+        // Stop TTS player if active
+        ttsPlayer.leaveChannel(guild.id);
+
+        logger.info(`Cleaned up resources for guild ${guild.id}`);
+      } catch (error) {
+        logger.error('Error cleaning up guild resources', error);
+      }
     });
 
     this.client.on('error', (error) => {

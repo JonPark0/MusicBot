@@ -6,6 +6,8 @@ from typing import Optional
 import uvicorn
 import os
 import logging
+import asyncio
+import time
 from pathlib import Path
 
 from models.xtts import XTTSModel
@@ -21,12 +23,12 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI(title="TTS Service", version="1.0.0")
 
-# CORS middleware
+# CORS middleware - restrict to internal network only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://discord-bot:3000", "http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -51,10 +53,14 @@ class SynthesizeRequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
-    """Load XTTS model on startup"""
+    """Load XTTS model on startup and start cache cleanup"""
     logger.info("Starting TTS service...")
     tts_model.load_model()
     logger.info("TTS service ready")
+
+    # Start cache cleanup task
+    import asyncio
+    asyncio.create_task(cleanup_cache_periodically())
 
 
 @app.get("/")
@@ -244,6 +250,65 @@ async def delete_voice(user_id: str, voice_name: str):
     except Exception as e:
         logger.error(f"Error deleting voice: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def cleanup_cache_periodically():
+    """
+    Periodically clean up old cache files
+    """
+    max_cache_size_gb = float(os.getenv("MAX_CACHE_SIZE_GB", "10"))
+    cleanup_hours = int(os.getenv("CACHE_CLEANUP_HOURS", "24"))
+    cleanup_interval = cleanup_hours * 3600  # Convert to seconds
+    max_cache_bytes = max_cache_size_gb * 1024 * 1024 * 1024
+
+    while True:
+        try:
+            await asyncio.sleep(cleanup_interval)
+
+            logger.info("Starting cache cleanup...")
+
+            # Get all cache files with their stats
+            cache_files = []
+            total_size = 0
+
+            for file_path in CACHE_DIR.glob("*.wav"):
+                stat = file_path.stat()
+                cache_files.append({
+                    "path": file_path,
+                    "size": stat.st_size,
+                    "atime": stat.st_atime  # Last access time
+                })
+                total_size += stat.st_size
+
+            # Sort by access time (oldest first)
+            cache_files.sort(key=lambda x: x["atime"])
+
+            # Remove old files if cache is too large
+            files_removed = 0
+            bytes_freed = 0
+
+            for file_info in cache_files:
+                if total_size <= max_cache_bytes:
+                    break
+
+                try:
+                    os.remove(file_info["path"])
+                    total_size -= file_info["size"]
+                    bytes_freed += file_info["size"]
+                    files_removed += 1
+                except Exception as e:
+                    logger.error(f"Failed to remove cache file {file_info['path']}: {e}")
+
+            if files_removed > 0:
+                logger.info(
+                    f"Cache cleanup completed: removed {files_removed} files, "
+                    f"freed {bytes_freed / (1024*1024):.2f} MB"
+                )
+            else:
+                logger.info("Cache cleanup completed: no files removed")
+
+        except Exception as e:
+            logger.error(f"Error in cache cleanup: {e}")
 
 
 if __name__ == "__main__":
