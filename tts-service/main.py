@@ -1,0 +1,250 @@
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional
+import uvicorn
+import os
+import logging
+from pathlib import Path
+
+from models.xtts import XTTSModel
+from utils.audio_processing import AudioProcessor
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Initialize FastAPI app
+app = FastAPI(title="TTS Service", version="1.0.0")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize services
+tts_model = XTTSModel()
+audio_processor = AudioProcessor()
+
+# Directories
+VOICES_DIR = Path("/app/voices")
+CACHE_DIR = Path("/app/cache")
+VOICES_DIR.mkdir(parents=True, exist_ok=True)
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+class SynthesizeRequest(BaseModel):
+    text: str
+    user_id: str
+    voice_name: Optional[str] = None
+    language: str = "en"
+    speed: float = 1.0
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Load XTTS model on startup"""
+    logger.info("Starting TTS service...")
+    tts_model.load_model()
+    logger.info("TTS service ready")
+
+
+@app.get("/")
+async def root():
+    """Health check endpoint"""
+    return {"status": "ok", "service": "TTS Service"}
+
+
+@app.get("/health")
+async def health():
+    """Health check"""
+    return {
+        "status": "healthy",
+        "model_loaded": tts_model.is_loaded(),
+    }
+
+
+@app.post("/register-voice")
+async def register_voice(
+    user_id: str = Form(...),
+    voice_name: str = Form(...),
+    language: str = Form("en"),
+    audio_file: UploadFile = File(...)
+):
+    """
+    Register a new voice for a user
+    """
+    try:
+        # Validate audio file
+        if not audio_file.filename.endswith(('.wav', '.mp3', '.ogg', '.flac')):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid audio format. Supported: wav, mp3, ogg, flac"
+            )
+
+        # Create user directory
+        user_dir = VOICES_DIR / user_id
+        user_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save original file
+        original_path = user_dir / f"{voice_name}_original{Path(audio_file.filename).suffix}"
+        with open(original_path, "wb") as f:
+            content = await audio_file.read()
+            f.write(content)
+
+        # Process audio (convert to WAV, normalize, etc.)
+        processed_path = user_dir / f"{voice_name}.wav"
+        audio_processor.process_voice_sample(str(original_path), str(processed_path))
+
+        # Validate audio length (should be 6-10 seconds for XTTS)
+        duration = audio_processor.get_duration(str(processed_path))
+        if duration < 6 or duration > 12:
+            os.remove(original_path)
+            os.remove(processed_path)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Audio duration must be between 6-12 seconds (got {duration:.1f}s)"
+            )
+
+        logger.info(f"Voice registered: user_id={user_id}, voice_name={voice_name}")
+
+        return {
+            "status": "success",
+            "user_id": user_id,
+            "voice_name": voice_name,
+            "duration": duration,
+            "file_path": str(processed_path)
+        }
+
+    except Exception as e:
+        logger.error(f"Error registering voice: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/synthesize")
+async def synthesize_speech(request: SynthesizeRequest):
+    """
+    Synthesize speech from text using user's voice
+    """
+    try:
+        # Validate text length
+        if len(request.text) > 500:
+            raise HTTPException(
+                status_code=400,
+                detail="Text too long (max 500 characters)"
+            )
+
+        if len(request.text.strip()) == 0:
+            raise HTTPException(status_code=400, detail="Text cannot be empty")
+
+        # Get voice file
+        voice_name = request.voice_name or "default"
+        voice_path = VOICES_DIR / request.user_id / f"{voice_name}.wav"
+
+        if not voice_path.exists():
+            raise HTTPException(
+                status_code=404,
+                detail=f"Voice '{voice_name}' not found for user {request.user_id}"
+            )
+
+        # Generate unique filename
+        import hashlib
+        text_hash = hashlib.md5(
+            f"{request.user_id}{voice_name}{request.text}".encode()
+        ).hexdigest()
+        output_path = CACHE_DIR / f"{text_hash}.wav"
+
+        # Check cache
+        if output_path.exists():
+            logger.info(f"Returning cached TTS: {text_hash}")
+            return FileResponse(
+                output_path,
+                media_type="audio/wav",
+                filename="tts_output.wav"
+            )
+
+        # Synthesize speech
+        logger.info(f"Synthesizing speech for user {request.user_id}")
+        tts_model.synthesize(
+            text=request.text,
+            speaker_wav=str(voice_path),
+            language=request.language,
+            output_path=str(output_path),
+            speed=request.speed
+        )
+
+        return FileResponse(
+            output_path,
+            media_type="audio/wav",
+            filename="tts_output.wav"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error synthesizing speech: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/voices/{user_id}")
+async def list_voices(user_id: str):
+    """
+    List all voices for a user
+    """
+    try:
+        user_dir = VOICES_DIR / user_id
+
+        if not user_dir.exists():
+            return {"voices": []}
+
+        voices = []
+        for file in user_dir.glob("*.wav"):
+            if not file.name.endswith("_original.wav"):
+                duration = audio_processor.get_duration(str(file))
+                voices.append({
+                    "name": file.stem,
+                    "duration": duration,
+                    "file_path": str(file)
+                })
+
+        return {"voices": voices}
+
+    except Exception as e:
+        logger.error(f"Error listing voices: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/voices/{user_id}/{voice_name}")
+async def delete_voice(user_id: str, voice_name: str):
+    """
+    Delete a voice
+    """
+    try:
+        user_dir = VOICES_DIR / user_id
+        voice_path = user_dir / f"{voice_name}.wav"
+        original_path = user_dir / f"{voice_name}_original.wav"
+
+        if voice_path.exists():
+            os.remove(voice_path)
+        if original_path.exists():
+            os.remove(original_path)
+
+        logger.info(f"Voice deleted: user_id={user_id}, voice_name={voice_name}")
+
+        return {"status": "success", "message": "Voice deleted"}
+
+    except Exception as e:
+        logger.error(f"Error deleting voice: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
