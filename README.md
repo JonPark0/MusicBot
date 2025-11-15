@@ -1,49 +1,49 @@
 # Discord Multi-Function Bot
 
-A powerful, self-hosted Discord bot with translation, TTS (Text-to-Speech), and music streaming capabilities.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-green.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+
+[한국어](./README.ko.md) | English
+
+A powerful, self-hosted Discord bot with translation, TTS (Text-to-Speech), and music streaming capabilities, designed for personal homeserver deployment.
 
 ## Features
 
-### 🌐 Translation
-- **Automatic cross-channel translation** using Google Gemini AI API
-- **Failsafe support** with LibreTranslate for offline/backup translation
-- **Context-aware translation** that preserves Discord formatting (mentions, emojis, etc.)
-- **Bidirectional translation** support
-- **Multiple language support**: English, Korean, Japanese, Chinese, Spanish, French, German, Russian, Portuguese, Italian
+### Translation
 
-### 🎤 Text-to-Speech (TTS)
-- **Custom voice cloning** using Coqui XTTS-v2 model
-- **User-specific voice registration** (6-12 second audio samples)
-- **Multiple voices per user** with easy switching
-- **Automatic playback** in voice channels when users type in TTS-enabled text channels
-- **Multi-language support** for TTS synthesis
+- Automatic cross-channel translation using Google Gemini AI API
+- Failsafe support with LibreTranslate for offline/backup translation
+- Context-aware translation that preserves Discord formatting
+- Bidirectional translation support
+- Multi-language support: English, Korean, Japanese, Chinese, Spanish, French, German, Russian, Portuguese, Italian
 
-### 🎵 Music Streaming
-- **Multi-platform support**: YouTube, Spotify, SoundCloud
-- **Real-time streaming** (no downloads required)
-- **Playlist support** for all platforms
-- **Advanced queue management** (shuffle, loop, remove)
-- **Volume control** and playback controls (pause, resume, skip)
-- **Track history** and analytics
+### Text-to-Speech (TTS)
+
+- Custom voice cloning using Coqui XTTS-v2 model
+- User-specific voice registration (6-12 second audio samples)
+- Multiple voices per user with easy switching
+- Automatic playback in voice channels
+- Multi-language support for TTS synthesis
+
+### Music Streaming
+
+- Multi-platform support: YouTube, Spotify, SoundCloud
+- Real-time streaming (no downloads required)
+- Playlist support for all platforms
+- Advanced queue management (shuffle, loop, remove)
+- Volume control and playback controls
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                  Docker Compose Stack                    │
-├─────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
-│  │ Discord Bot  │  │ TTS Service  │  │LibreTranslate│  │
-│  │  (Node.js)   │  │  (Python)    │  │  (Failsafe)  │  │
-│  └──────┬───────┘  └──────┬───────┘  └──────────────┘  │
-│         │                 │                              │
-│  ┌──────┴─────────────────┴──────────────┐             │
-│  │         PostgreSQL Database            │             │
-│  └────────────────────────────────────────┘             │
-│  ┌────────────────────────────────────────┐             │
-│  │         Redis Cache & Queue            │             │
-│  └────────────────────────────────────────┘             │
-└─────────────────────────────────────────────────────────┘
+Docker Compose Stack
+├── Discord Bot (Node.js/TypeScript)
+├── TTS Service (Python/FastAPI)
+├── LibreTranslate (Failsafe)
+├── PostgreSQL Database
+└── Redis Cache & Queue
 ```
 
 ## Tech Stack
@@ -54,7 +54,7 @@ A powerful, self-hosted Discord bot with translation, TTS (Text-to-Speech), and 
 - **Music**: play-dl, FFmpeg, @discordjs/voice
 - **Database**: PostgreSQL 15
 - **Cache**: Redis 7
-- **Containerization**: Docker, Docker Compose
+- **Deployment**: Docker, Docker Compose
 
 ## Prerequisites
 
@@ -63,10 +63,10 @@ A powerful, self-hosted Discord bot with translation, TTS (Text-to-Speech), and 
 - Google Gemini API Key ([Get here](https://aistudio.google.com/app/apikey))
 - (Optional) Spotify Client ID & Secret for Spotify support
 - (Optional) NVIDIA GPU for faster TTS processing
+- At least 8GB RAM (16GB recommended for TTS)
+- 10GB free disk space
 
 ## Quick Start
-
-See [SETUP.md](./docs/SETUP.md) for detailed installation instructions.
 
 ```bash
 # 1. Clone the repository
@@ -96,72 +96,39 @@ DISCORD_TOKEN=your_discord_bot_token
 DISCORD_CLIENT_ID=your_client_id
 GEMINI_API_KEY=your_gemini_api_key
 POSTGRES_PASSWORD=your_secure_password
+REDIS_PASSWORD=your_redis_password
 
 # Optional
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 ```
 
-## Commands
+## Documentation
 
-See [COMMANDS.md](./docs/COMMANDS.md) for a complete list of commands.
+- [Setup Guide](./docs/SETUP.md) - Detailed installation instructions
+- [Commands Reference](./docs/COMMANDS.md) - Complete list of commands
+- [한국어 설치 가이드](./docs/SETUP.ko.md) - 한국어 설치 방법
+- [한국어 명령어](./docs/COMMANDS.ko.md) - 한국어 명령어 목록
 
-### Quick Reference
+## Security Features
 
-**Translation:**
-- `/translate-admin setup` - Configure translation pairs
-- `/translate status` - Check translation status
-
-**TTS:**
-- `/tts register` - Register your voice
-- `/tts-admin enable-channel` - Enable TTS in a channel
-
-**Music:**
-- `/music play <url>` - Play a track or playlist
-- `/music queue` - Show current queue
-- `/music-admin enable-channel` - Enable music in a channel
-
-## Project Structure
-
-```
-discord_bot/
-├── bot/                    # Node.js Discord Bot
-│   ├── src/
-│   │   ├── commands/       # Slash commands
-│   │   ├── services/       # Business logic
-│   │   ├── handlers/       # Event handlers
-│   │   └── utils/          # Utilities
-│   ├── Dockerfile
-│   └── package.json
-├── tts-service/           # Python TTS Service
-│   ├── models/            # XTTS-v2 wrapper
-│   ├── api/               # FastAPI endpoints
-│   ├── Dockerfile
-│   └── requirements.txt
-├── database/
-│   └── init.sql           # Database schema
-├── docker-compose.yml
-└── .env
-```
+- Internal network-only communication between services
+- No exposed ports to host network
+- Redis authentication required
+- Environment-based credential management
+- Automatic resource cleanup
 
 ## Performance
 
-- **Translation**: ~1-2 seconds per message (Gemini) or ~0.5s (cached)
-- **TTS**: ~2-5 seconds to generate speech (CPU), ~1-2s (GPU)
-- **Music**: Near-instant playback with streaming
-- **Resource Usage**:
+- Translation: ~1-2 seconds per message (Gemini) or ~0.5s (cached)
+- TTS: ~2-5 seconds to generate speech (CPU), ~1-2s (GPU)
+- Music: Near-instant playback with streaming
+- Resource Usage:
   - Bot: ~200MB RAM
   - TTS Service: ~2-4GB RAM (model loaded)
   - LibreTranslate: ~1GB RAM
   - PostgreSQL: ~100MB RAM
   - Redis: ~50MB RAM
-
-## Security
-
-- All credentials stored in environment variables
-- Database credentials not exposed
-- Discord token kept secure
-- No data logging of user messages (only metadata)
 
 ## Contributing
 
@@ -171,12 +138,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Support
-
-For issues and questions:
-- Open an issue on GitHub
-- Check [SETUP.md](./docs/SETUP.md) for troubleshooting
-
 ## Acknowledgments
 
 - [discord.js](https://discord.js.org/) - Discord API library
@@ -184,3 +145,9 @@ For issues and questions:
 - [Google Gemini](https://ai.google.dev/) - AI-powered translation
 - [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) - Open-source translation
 - [play-dl](https://github.com/play-dl/play-dl) - Music streaming library
+
+## Support
+
+For issues and questions:
+- Open an issue on GitHub
+- Check [SETUP.md](./docs/SETUP.md) for troubleshooting
