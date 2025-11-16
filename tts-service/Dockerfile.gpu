@@ -1,0 +1,47 @@
+# GPU-enabled Dockerfile for NVIDIA CUDA support
+# Build with: docker build -f Dockerfile.gpu -t tts-service:gpu .
+
+FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+
+# Install Python 3.10 and system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.10 \
+    python3-pip \
+    python3.10-venv \
+    build-essential \
+    libsndfile1 \
+    ffmpeg \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.10 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.10 1 && \
+    update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 1
+
+WORKDIR /app
+
+# Copy GPU requirements
+COPY requirements-gpu.txt .
+
+# Install Python dependencies with CUDA support
+RUN pip install --no-cache-dir -r requirements-gpu.txt
+
+# Download XTTS-v2 model on build
+RUN python -c "from TTS.api import TTS; TTS('tts_models/multilingual/multi-dataset/xtts_v2', gpu=True)"
+
+# Copy source code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/voices /app/cache
+
+# Expose port
+EXPOSE 8000
+
+# Environment variables for NVIDIA
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Start FastAPI server
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

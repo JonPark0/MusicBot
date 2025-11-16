@@ -24,9 +24,9 @@ Complete guide to setting up the Discord Multi-Function Bot.
 
 ### Optional
 
-- **NVIDIA GPU** with CUDA support (for faster TTS)
-- **Spotify Client ID & Secret** (for Spotify music support)
-- **YouTube API Key** (for better search results)
+- **NVIDIA GPU** with CUDA support (for faster TTS - automatically detected)
+- **Spotify Client ID & Secret** (optional - bot works without it, converts Spotify links to YouTube)
+- **YouTube API Key** (optional - bot works without it using scraping)
 
 ## Discord Bot Setup
 
@@ -83,16 +83,27 @@ https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=3676883
 
 **Note**: Gemini 2.0 Flash has a generous free tier (1500 requests/day).
 
-### Spotify API (Optional)
+### Spotify API (Optional - Music Works Without It)
 
+**Note**: The bot can play Spotify links WITHOUT API keys. It automatically converts Spotify URLs to YouTube for playback. API keys are only needed if you want:
+- Improved Spotify metadata accuracy
+- Higher rate limits
+- Better playlist handling
+
+If you want to use Spotify API:
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
 2. Click "Create an App"
 3. Fill in app name and description
 4. Accept terms and click "Create"
 5. Note down "Client ID" and "Client Secret"
 
-### YouTube API (Optional)
+### YouTube API (Optional - Music Works Without It)
 
+**Note**: The bot can search and play YouTube videos WITHOUT API keys. It uses scraping by default. API keys are only needed if you want:
+- Higher rate limits
+- Better reliability under heavy load
+
+If you want to use YouTube API:
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project
 3. Enable "YouTube Data API v3"
@@ -137,12 +148,12 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # Database (REQUIRED - use a strong password)
 POSTGRES_PASSWORD=your_secure_password_here
 
-# Spotify (OPTIONAL)
-SPOTIFY_CLIENT_ID=your_spotify_client_id_here
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
+# Spotify (OPTIONAL - leave empty if not using)
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
 
-# YouTube (OPTIONAL)
-YOUTUBE_API_KEY=your_youtube_api_key_here
+# YouTube (OPTIONAL - leave empty if not using)
+YOUTUBE_API_KEY=
 ```
 
 ## Starting the Bot
@@ -195,9 +206,24 @@ Check your Discord server - the bot should appear online.
 
 ## GPU Support (Optional)
 
-To enable GPU acceleration for TTS:
+The TTS service **automatically detects** NVIDIA GPUs if available. The code checks for CUDA support at runtime:
 
-### 1. Install NVIDIA Container Toolkit
+```python
+self.device = "cuda" if torch.cuda.is_available() else "cpu"
+```
+
+However, Docker needs to be configured to pass the GPU to the container.
+
+### Method 1: Using GPU Override File (Recommended)
+
+```bash
+# Start with GPU support
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+### Method 2: Manual Configuration
+
+#### 1. Install NVIDIA Container Toolkit
 
 ```bash
 # Ubuntu/Debian
@@ -210,13 +236,13 @@ sudo apt-get install -y nvidia-docker2
 sudo systemctl restart docker
 ```
 
-### 2. Verify GPU Access
+#### 2. Verify GPU Access
 
 ```bash
 docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
 ```
 
-### 3. Uncomment GPU Settings
+#### 3. Uncomment GPU Settings
 
 In `docker-compose.yml`, uncomment the GPU section under `tts-service`:
 
@@ -232,12 +258,46 @@ tts-service:
             capabilities: [gpu]
 ```
 
-### 4. Restart Services
+#### 4. Restart Services
 
 ```bash
 docker-compose down
 docker-compose up -d
 ```
+
+### Advanced: Using GPU-Optimized Image
+
+For better GPU performance, build with the GPU-optimized Dockerfile:
+
+```bash
+cd tts-service
+docker build -f Dockerfile.gpu -t tts-service:gpu .
+```
+
+Then update `docker-compose.yml` to use the GPU image:
+
+```yaml
+tts-service:
+  image: tts-service:gpu
+  # instead of:
+  # build:
+  #   context: ./tts-service
+```
+
+### Verifying GPU Usage
+
+Check if GPU is being used:
+
+```bash
+docker-compose logs tts-service | grep -i "device\|cuda"
+```
+
+You should see: `Using device: cuda`
+
+If you see `Using device: cpu`, verify:
+1. NVIDIA drivers are installed on host
+2. nvidia-docker2 is installed
+3. GPU settings are uncommented in docker-compose.yml
 
 ## Configuration
 

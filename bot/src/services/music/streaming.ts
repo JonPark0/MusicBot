@@ -31,16 +31,9 @@ export class MusicStreamingService {
   private async initializePlayer() {
     try {
       // Load default extractors (YouTube, Spotify, SoundCloud, etc.)
-      await this.player.extractors.loadDefault((ext) => {
-        // Filter out extractors we don't want
-        return ext !== 'YouTubeExtractor'; // We'll use the default YouTube extractor
-      });
+      await this.player.extractors.loadDefault();
 
-      // Configure Spotify if credentials are available
-      if (config.spotify.clientId && config.spotify.clientSecret) {
-        // Spotify configuration is handled by the extractor automatically
-        logger.info('Spotify credentials available for discord-player');
-      }
+      logger.info('Discord-player extractors loaded successfully');
 
       this.initialized = true;
       logger.info('Discord-player initialized successfully');
