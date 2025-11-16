@@ -17,9 +17,8 @@ class XTTSModel:
         try:
             logger.info("Loading XTTS-v2 model...")
             self.model = TTS(
-                model_name="tts_models/multilingual/multi-dataset/xtts_v2",
-                gpu=(self.device == "cuda")
-            )
+                model_name="tts_models/multilingual/multi-dataset/xtts_v2"
+            ).to(self.device)
             logger.info("XTTS-v2 model loaded successfully")
         except Exception as e:
             logger.error(f"Failed to load XTTS-v2 model: {e}")
