@@ -30,9 +30,13 @@ export class MusicStreamingService {
       // Load YoutubeiExtractor for YouTube, Spotify, SoundCloud support
       // This is the recommended extractor for discord-player v7
       await this.player.extractors.register(YoutubeiExtractor, {
-        // Use default settings - most compatible
-        // streamOptions can be customized if needed:
-        // streamOptions: { useClient: 'WEB', highWaterMark: 1024 * 1024 * 10 }
+        // Use IOS client for better compatibility with YouTube's restrictions
+        streamOptions: {
+          useClient: 'IOS',
+          highWaterMark: 1024 * 1024 * 32, // 32MB buffer for smoother streaming
+        },
+        // Disable JavaScript player to avoid signature decipher issues
+        disablePlayer: true,
       });
 
       logger.info('Discord-player extractors loaded successfully');
