@@ -18,15 +18,17 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
-    npm install -g typescript
+# Install all dependencies (including dev for TypeScript compilation)
+RUN npm ci
 
 # Copy source code
 COPY src ./src
 
 # Build TypeScript
 RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --production
 
 # Create audio directory
 RUN mkdir -p /app/audio
