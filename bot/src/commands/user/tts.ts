@@ -58,6 +58,14 @@ export class TTSCommand {
         .addStringOption((option) =>
           option.setName('voice-name').setDescription('Voice to use').setRequired(true)
         )
+        .addNumberOption((option) =>
+          option
+            .setName('speed')
+            .setDescription('Speech speed (0.5-2.0, default: 1.0)')
+            .setRequired(false)
+            .setMinValue(0.5)
+            .setMaxValue(2.0)
+        )
     )
     .addSubcommand((subcommand) =>
       subcommand.setName('list').setDescription('List your registered voices')
@@ -83,6 +91,14 @@ export class TTSCommand {
             .setDescription('Text to speak')
             .setRequired(true)
             .setMaxLength(200)
+        )
+        .addNumberOption((option) =>
+          option
+            .setName('speed')
+            .setDescription('Speech speed (0.5-2.0, default: 1.0)')
+            .setRequired(false)
+            .setMinValue(0.5)
+            .setMaxValue(2.0)
         )
     )
     .addSubcommand((subcommand) =>
@@ -183,6 +199,7 @@ export class TTSCommand {
 
   private async handleSelect(interaction: ChatInputCommandInteraction) {
     const voiceName = interaction.options.get('voice-name')?.value as string;
+    const speed = (interaction.options.get('speed')?.value as number) || 1.0;
 
     try {
       // Check if voice exists
@@ -201,18 +218,23 @@ export class TTSCommand {
         return;
       }
 
-      // Set as default
+      // Set as default and update speed
       await db.query('UPDATE user_voices SET is_default = false WHERE user_id = $1', [
         interaction.user.id,
       ]);
 
       await db.query(
-        'UPDATE user_voices SET is_default = true WHERE user_id = $1 AND voice_name = $2',
-        [interaction.user.id, voiceName]
+        'UPDATE user_voices SET is_default = true, speed = $3 WHERE user_id = $1 AND voice_name = $2',
+        [interaction.user.id, voiceName, speed]
       );
 
       await interaction.reply({
-        embeds: [EmbedFactory.success('Voice Selected', `Now using voice: "${voiceName}"`)],
+        embeds: [
+          EmbedFactory.success(
+            'Voice Selected',
+            `Now using voice: "${voiceName}"\nSpeed: ${speed}x`
+          ),
+        ],
         ephemeral: true,
       });
     } catch (error) {
@@ -308,6 +330,7 @@ export class TTSCommand {
 
     const voiceName = interaction.options.get('voice-name')?.value as string;
     const text = interaction.options.get('text')?.value as string;
+    const speed = (interaction.options.get('speed')?.value as number) || 1.0;
 
     try {
       // Get voice language from database
@@ -325,12 +348,13 @@ export class TTSCommand {
 
       const language = dbResult.rows[0].language || 'en';
 
-      // Synthesize speech
+      // Synthesize speech with speed
       const audioBuffer = await ttsClient.synthesize(
         interaction.user.id,
         text,
         voiceName,
-        language
+        language,
+        speed
       );
 
       // Send as attachment
@@ -340,7 +364,7 @@ export class TTSCommand {
         embeds: [
           EmbedFactory.success(
             'Preview Generated',
-            `Voice: ${voiceName}\nText: "${text}"`
+            `Voice: ${voiceName}\nSpeed: ${speed}x\nText: "${text}"`
           ),
         ],
         files: [attachment],
