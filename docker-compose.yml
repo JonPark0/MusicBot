@@ -4,6 +4,8 @@ services:
     image: ghcr.io/lavalink-devs/lavalink:4
     container_name: lavalink
     restart: unless-stopped
+    environment:
+      - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
     volumes:
       - ./lavalink/application.yml:/opt/Lavalink/application.yml
       - ./logs/lavalink:/opt/Lavalink/logs
