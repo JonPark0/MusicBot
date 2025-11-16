@@ -24,9 +24,9 @@ Discord 다기능 봇 설치를 위한 완벽한 가이드입니다.
 
 ### 선택
 
-- **NVIDIA GPU** CUDA 지원 (더 빠른 TTS를 위함)
-- **Spotify Client ID & Secret** (Spotify 음악 지원)
-- **YouTube API Key** (더 나은 검색 결과)
+- **NVIDIA GPU** CUDA 지원 (더 빠른 TTS를 위함 - 자동 감지)
+- **Spotify Client ID & Secret** (선택 - 없어도 작동, Spotify 링크를 YouTube로 자동 변환)
+- **YouTube API Key** (선택 - 없어도 스크래핑으로 작동)
 
 ## Discord Bot 설정
 
@@ -83,16 +83,27 @@ https://discord.com/api/oauth2/authorize?client_id=CLIENT_ID&permissions=3676883
 
 **참고**: Gemini 2.0 Flash는 무료 등급 제공 (일일 1500 요청).
 
-### Spotify API (선택)
+### Spotify API (선택 - 없어도 음악 재생 가능)
 
+**참고**: 봇은 API 키 없이도 Spotify 링크를 재생할 수 있습니다. Spotify URL을 자동으로 YouTube로 변환하여 재생합니다. API 키는 다음 경우에만 필요합니다:
+- Spotify 메타데이터 정확도 향상
+- 더 높은 요청 제한
+- 더 나은 플레이리스트 처리
+
+Spotify API를 사용하려면:
 1. [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) 접속
 2. "Create an App" 클릭
 3. 앱 이름과 설명 입력
 4. 약관 동의 후 "Create" 클릭
 5. "Client ID"와 "Client Secret" 메모
 
-### YouTube API (선택)
+### YouTube API (선택 - 없어도 음악 재생 가능)
 
+**참고**: 봇은 API 키 없이도 YouTube 동영상을 검색하고 재생할 수 있습니다. 기본적으로 스크래핑을 사용합니다. API 키는 다음 경우에만 필요합니다:
+- 더 높은 요청 제한
+- 높은 사용량에서의 안정성 향상
+
+YouTube API를 사용하려면:
 1. [Google Cloud Console](https://console.cloud.google.com/) 접속
 2. 새 프로젝트 생성
 3. "YouTube Data API v3" 활성화
@@ -138,12 +149,12 @@ GEMINI_API_KEY=여기에_제미나이_API_키_입력
 POSTGRES_PASSWORD=안전한_비밀번호_입력
 REDIS_PASSWORD=레디스_비밀번호_입력
 
-# Spotify (선택)
-SPOTIFY_CLIENT_ID=스포티파이_클라이언트_ID
-SPOTIFY_CLIENT_SECRET=스포티파이_시크릿
+# Spotify (선택 - 사용하지 않으면 비워두기)
+SPOTIFY_CLIENT_ID=
+SPOTIFY_CLIENT_SECRET=
 
-# YouTube (선택)
-YOUTUBE_API_KEY=유튜브_API_키
+# YouTube (선택 - 사용하지 않으면 비워두기)
+YOUTUBE_API_KEY=
 ```
 
 ## 봇 시작하기
@@ -196,9 +207,24 @@ Discord 서버에서 봇이 온라인 상태인지 확인하세요.
 
 ## GPU 지원 (선택)
 
-TTS를 위한 GPU 가속 활성화:
+TTS 서비스는 NVIDIA GPU를 **자동으로 감지**합니다. 코드는 런타임에 CUDA 지원 여부를 확인합니다:
 
-### 1. NVIDIA Container Toolkit 설치
+```python
+self.device = "cuda" if torch.cuda.is_available() else "cpu"
+```
+
+그러나 Docker가 GPU를 컨테이너에 전달하도록 설정해야 합니다.
+
+### 방법 1: GPU Override 파일 사용 (권장)
+
+```bash
+# GPU 지원으로 시작
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+```
+
+### 방법 2: 수동 설정
+
+#### 1. NVIDIA Container Toolkit 설치
 
 ```bash
 # Ubuntu/Debian
@@ -211,13 +237,13 @@ sudo apt-get install -y nvidia-docker2
 sudo systemctl restart docker
 ```
 
-### 2. GPU 액세스 확인
+#### 2. GPU 액세스 확인
 
 ```bash
 docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
 ```
 
-### 3. GPU 설정 활성화
+#### 3. GPU 설정 활성화
 
 `docker-compose.yml`에서 `tts-service`의 GPU 섹션 주석 해제:
 
@@ -233,12 +259,46 @@ tts-service:
             capabilities: [gpu]
 ```
 
-### 4. 서비스 재시작
+#### 4. 서비스 재시작
 
 ```bash
 docker-compose down
 docker-compose up -d
 ```
+
+### 고급: GPU 최적화 이미지 사용
+
+더 나은 GPU 성능을 위해 GPU 최적화 Dockerfile로 빌드:
+
+```bash
+cd tts-service
+docker build -f Dockerfile.gpu -t tts-service:gpu .
+```
+
+그런 다음 `docker-compose.yml`에서 GPU 이미지 사용:
+
+```yaml
+tts-service:
+  image: tts-service:gpu
+  # 다음 대신:
+  # build:
+  #   context: ./tts-service
+```
+
+### GPU 사용 확인
+
+GPU가 사용되고 있는지 확인:
+
+```bash
+docker-compose logs tts-service | grep -i "device\|cuda"
+```
+
+`Using device: cuda`가 표시되어야 합니다.
+
+`Using device: cpu`가 표시되면 다음을 확인:
+1. 호스트에 NVIDIA 드라이버가 설치되어 있는지
+2. nvidia-docker2가 설치되어 있는지
+3. docker-compose.yml에서 GPU 설정이 주석 해제되었는지
 
 ## 채널 설정
 
