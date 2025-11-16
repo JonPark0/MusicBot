@@ -16,6 +16,9 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Accept Coqui TTS license agreement for XTTS-v2 model
+ENV COQUI_TOS_AGREED=1
+
 # Download XTTS-v2 model on build (optional, can be done at runtime)
 RUN python -c "from TTS.api import TTS; TTS('tts_models/multilingual/multi-dataset/xtts_v2', gpu=False)"
 
