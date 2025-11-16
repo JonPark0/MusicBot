@@ -66,6 +66,20 @@ CACHE_DIR = Path("/app/cache")
 VOICES_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+# Supported languages configuration
+# All languages supported by XTTS-v2
+ALL_XTTS_LANGUAGES = ["en", "es", "fr", "de", "it", "pt", "pl", "tr", "ru", "nl", "cs", "ar", "zh-cn", "ja", "hu", "ko"]
+
+# Get enabled languages from environment (defaults to all)
+_env_languages = os.getenv("TTS_SUPPORTED_LANGUAGES", ",".join(ALL_XTTS_LANGUAGES))
+SUPPORTED_LANGUAGES = [lang.strip() for lang in _env_languages.split(",") if lang.strip() in ALL_XTTS_LANGUAGES]
+
+# Ensure at least English is supported
+if not SUPPORTED_LANGUAGES:
+    SUPPORTED_LANGUAGES = ["en"]
+
+logger.info(f"TTS supported languages: {SUPPORTED_LANGUAGES}")
+
 
 class SynthesizeRequest(BaseModel):
     text: str
@@ -87,6 +101,16 @@ async def health():
     return {
         "status": "healthy",
         "model_loaded": tts_model.is_loaded(),
+        "supported_languages": SUPPORTED_LANGUAGES,
+    }
+
+
+@app.get("/languages")
+async def get_languages():
+    """Get list of supported languages"""
+    return {
+        "supported": SUPPORTED_LANGUAGES,
+        "all_available": ALL_XTTS_LANGUAGES,
     }
 
 
@@ -162,6 +186,13 @@ async def synthesize_speech(request: SynthesizeRequest):
 
         if len(request.text.strip()) == 0:
             raise HTTPException(status_code=400, detail="Text cannot be empty")
+
+        # Validate language
+        if request.language not in SUPPORTED_LANGUAGES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Language '{request.language}' is not supported. Supported languages: {', '.join(SUPPORTED_LANGUAGES)}"
+            )
 
         # Get voice file
         voice_name = request.voice_name or "default"

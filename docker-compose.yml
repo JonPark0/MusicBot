@@ -48,8 +48,9 @@ services:
     environment:
       - REDIS_URL=${REDIS_URL}
       - DATABASE_URL=${DATABASE_URL}
-      - MAX_CACHE_SIZE_GB=10
-      - CACHE_CLEANUP_HOURS=24
+      - MAX_CACHE_SIZE_GB=${MAX_CACHE_SIZE_GB:-10}
+      - CACHE_CLEANUP_HOURS=${CACHE_CLEANUP_HOURS:-24}
+      - TTS_SUPPORTED_LANGUAGES=${TTS_SUPPORTED_LANGUAGES:-en,ko,ja,zh-cn}
     volumes:
       - ./data/voices:/app/voices
       - ./data/tts-cache:/app/cache
