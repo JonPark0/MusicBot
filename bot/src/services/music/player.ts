@@ -49,12 +49,30 @@ export class MusicPlayer {
       logger.info('Queue finished', { guildId: queue.guild.id });
     });
 
+    // Audio player error (critical for debugging)
+    player.events.on('audioTrackAdd', (queue, track) => {
+      logger.debug('Track added to queue', {
+        guildId: queue.guild.id,
+        title: track.title,
+      });
+    });
+
+    // Connection events
+    player.events.on('connection', (queue) => {
+      logger.info('Voice connection established', { guildId: queue.guild.id });
+    });
+
+    player.events.on('disconnect', (queue) => {
+      logger.warn('Voice connection disconnected', { guildId: queue.guild.id });
+    });
+
     // Error events
     player.events.on('playerError', (queue, error, track) => {
       logger.error('Player error', {
         guildId: queue.guild.id,
         track: track.title,
         error: error.message,
+        stack: error.stack,
       });
     });
 
@@ -62,7 +80,13 @@ export class MusicPlayer {
       logger.error('Queue error', {
         guildId: queue.guild.id,
         error: error.message,
+        stack: error.stack,
       });
+    });
+
+    // Debug event for stream issues
+    player.events.on('debug', (queue, message) => {
+      logger.debug('Player debug', { guildId: queue.guild.id, message });
     });
   }
 
