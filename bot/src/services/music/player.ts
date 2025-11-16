@@ -64,14 +64,6 @@ export class MusicPlayer {
         error: error.message,
       });
     });
-
-    // Connection error
-    player.events.on('connectionError', (queue, error) => {
-      logger.error('Connection error', {
-        guildId: queue.guild.id,
-        error: error.message,
-      });
-    });
   }
 
   /**
@@ -337,7 +329,7 @@ export class MusicPlayer {
       return 0;
     }
 
-    return Math.floor(queue.durationMS / 1000);
+    return Math.floor(queue.estimatedDuration / 1000);
   }
 
   /**

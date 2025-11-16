@@ -19,10 +19,6 @@ export class MusicStreamingService {
   constructor(client: Client) {
     this.player = new Player(client, {
       skipFFmpeg: false,
-      ytdlOptions: {
-        quality: 'highestaudio',
-        highWaterMark: 1 << 25,
-      },
     });
 
     this.initializePlayer();
