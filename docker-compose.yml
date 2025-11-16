@@ -11,7 +11,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - LIBRETRANSLATE_URL=${LIBRETRANSLATE_URL}
+      - LIBRETRANSLATE_URL=${LIBRETRANSLATE_URL:-}
       - TTS_SERVICE_URL=${TTS_SERVICE_URL}
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
@@ -21,8 +21,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      libretranslate:
         condition: service_healthy
       tts-service:
         condition: service_healthy
@@ -75,10 +73,13 @@ services:
     networks:
       - discord-network
 
-  # LibreTranslate (Failsafe Translation)
+  # LibreTranslate (Optional - Failsafe Translation)
+  # Enable with: docker compose --profile libretranslate up -d
   libretranslate:
     image: libretranslate/libretranslate:v1.6.3
     container_name: libretranslate
+    profiles:
+      - libretranslate
     restart: unless-stopped
     environment:
       - LT_LOAD_ONLY=en,ko,ja,zh,es,fr,de,ru,pt,it
