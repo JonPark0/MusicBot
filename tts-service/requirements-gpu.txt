@@ -39,5 +39,7 @@ asyncpg==0.30.0
 redis==5.2.1
 
 # Additional TTS models
-# Chatterbox (ResembleAI) - optional, enable via TTS_MODELS env var
-chatterbox-tts==0.1.4
+# Chatterbox (ResembleAI) - CANNOT be installed with coqui-tts due to numpy version conflict
+# chatterbox-tts requires numpy<1.26.0, coqui-tts requires numpy>=1.26.0
+# To use Chatterbox, create a separate service or use a multi-stage build
+# chatterbox-tts==0.1.4
