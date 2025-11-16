@@ -1,4 +1,5 @@
 import { Player, SearchResult, Track as DPTrack, QueryType } from 'discord-player';
+import { DefaultExtractors } from '@discord-player/extractor';
 import { Client } from 'discord.js';
 import { logger } from '../../utils/logger';
 import { config } from '../../config/constants';
@@ -27,7 +28,7 @@ export class MusicStreamingService {
   private async initializePlayer() {
     try {
       // Load default extractors (YouTube, Spotify, SoundCloud, etc.)
-      await this.player.extractors.loadDefault();
+      await this.player.extractors.loadMulti(DefaultExtractors);
 
       logger.info('Discord-player extractors loaded successfully');
 
