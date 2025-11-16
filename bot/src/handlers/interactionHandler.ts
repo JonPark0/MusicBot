@@ -1,10 +1,10 @@
-import { Client, Collection, CommandInteraction, Interaction } from 'discord.js';
+import { Client, Collection, ChatInputCommandInteraction, Interaction } from 'discord.js';
 import { logger } from '../utils/logger';
 import { EmbedFactory } from '../utils/embeds';
 
 export interface Command {
   data: any;
-  execute: (interaction: CommandInteraction) => Promise<void>;
+  execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 }
 
 export class InteractionHandler {

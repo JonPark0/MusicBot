@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { db } from '../../database/client';
 import { logger } from '../../utils/logger';
 import { EmbedFactory } from '../../utils/embeds';
@@ -11,7 +11,7 @@ export class TranslateCommand {
       subcommand.setName('status').setDescription('Check translation status for current channel')
     );
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.data[0].name;
 
     switch (subcommand) {
@@ -21,7 +21,7 @@ export class TranslateCommand {
     }
   }
 
-  private async handleStatus(interaction: CommandInteraction) {
+  private async handleStatus(interaction: ChatInputCommandInteraction) {
     try {
       const result = await db.query(
         `SELECT target_channel_id, source_lang, target_lang, bidirectional, enabled

@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   AttachmentBuilder,
   GuildMember,
 } from 'discord.js';
@@ -94,7 +94,7 @@ export class TTSCommand {
         )
     );
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.data[0].name;
 
     switch (subcommand) {
@@ -119,7 +119,7 @@ export class TTSCommand {
     }
   }
 
-  private async handleRegister(interaction: CommandInteraction) {
+  private async handleRegister(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ ephemeral: true });
 
     const voiceName = interaction.options.get('voice-name')?.value as string;
@@ -181,7 +181,7 @@ export class TTSCommand {
     }
   }
 
-  private async handleSelect(interaction: CommandInteraction) {
+  private async handleSelect(interaction: ChatInputCommandInteraction) {
     const voiceName = interaction.options.get('voice-name')?.value as string;
 
     try {
@@ -224,7 +224,7 @@ export class TTSCommand {
     }
   }
 
-  private async handleList(interaction: CommandInteraction) {
+  private async handleList(interaction: ChatInputCommandInteraction) {
     try {
       const voices = await ttsClient.listVoices(interaction.user.id);
 
@@ -269,7 +269,7 @@ export class TTSCommand {
     }
   }
 
-  private async handleDelete(interaction: CommandInteraction) {
+  private async handleDelete(interaction: ChatInputCommandInteraction) {
     const voiceName = interaction.options.get('voice-name')?.value as string;
 
     try {
@@ -303,7 +303,7 @@ export class TTSCommand {
     }
   }
 
-  private async handlePreview(interaction: CommandInteraction) {
+  private async handlePreview(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ ephemeral: true });
 
     const voiceName = interaction.options.get('voice-name')?.value as string;
@@ -355,7 +355,7 @@ export class TTSCommand {
     }
   }
 
-  private async handleSetDefault(interaction: CommandInteraction) {
+  private async handleSetDefault(interaction: ChatInputCommandInteraction) {
     const voiceName = interaction.options.get('voice-name')?.value as string;
 
     try {

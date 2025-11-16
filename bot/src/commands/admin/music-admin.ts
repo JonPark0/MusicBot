@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ChannelType,
   PermissionFlagsBits,
 } from 'discord.js';
@@ -71,7 +71,7 @@ export class MusicAdminCommand {
         )
     );
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     const hasPermission = await PermissionManager.hasAdminPermission(interaction);
     if (!hasPermission) {
       await interaction.reply({
@@ -104,7 +104,7 @@ export class MusicAdminCommand {
     }
   }
 
-  private async handleEnableChannel(interaction: CommandInteraction) {
+  private async handleEnableChannel(interaction: ChatInputCommandInteraction) {
     const channel = interaction.options.get('channel')?.channel;
     const maxQueueSize = (interaction.options.get('max-queue-size')?.value as number) || 100;
     const maxDuration = (interaction.options.get('max-duration')?.value as number) || 3600;
@@ -137,7 +137,7 @@ export class MusicAdminCommand {
     }
   }
 
-  private async handleDisableChannel(interaction: CommandInteraction) {
+  private async handleDisableChannel(interaction: ChatInputCommandInteraction) {
     const channel = interaction.options.get('channel')?.channel;
 
     try {
@@ -160,7 +160,7 @@ export class MusicAdminCommand {
     }
   }
 
-  private async handleListChannels(interaction: CommandInteraction) {
+  private async handleListChannels(interaction: ChatInputCommandInteraction) {
     try {
       const result = await db.query(
         `SELECT channel_id, enabled, max_queue_size, max_duration_seconds, volume_limit
@@ -203,7 +203,7 @@ export class MusicAdminCommand {
     }
   }
 
-  private async handleSetVolumeLimit(interaction: CommandInteraction) {
+  private async handleSetVolumeLimit(interaction: ChatInputCommandInteraction) {
     const maxVolume = interaction.options.get('max-volume')?.value as number;
 
     try {

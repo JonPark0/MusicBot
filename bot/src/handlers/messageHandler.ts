@@ -143,7 +143,7 @@ export class MessageHandler {
       const text = message.content.substring(0, 500);
 
       // Play TTS in user's voice channel
-      await ttsPlayer.playTTS(voiceChannel, text, message.author.id, voiceName, language);
+      await ttsPlayer.playTTS(voiceChannel as any, text, message.author.id, voiceName, language);
 
       logger.info('TTS played', {
         userId: message.author.id,

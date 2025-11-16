@@ -50,7 +50,7 @@ export class TTSPlayer {
     const connection = joinVoiceChannel({
       channelId: channel.id,
       guildId: channel.guild.id,
-      adapterCreator: channel.guild.voiceAdapterCreator,
+      adapterCreator: channel.guild.voiceAdapterCreator as any,
     });
 
     // Wait for connection to be ready

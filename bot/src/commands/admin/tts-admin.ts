@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ChannelType,
   PermissionFlagsBits,
 } from 'discord.js';
@@ -48,7 +48,7 @@ export class TTSAdminCommand {
       subcommand.setName('list-channels').setDescription('List all TTS-enabled channels')
     );
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     const hasPermission = await PermissionManager.hasAdminPermission(interaction);
     if (!hasPermission) {
       await interaction.reply({
@@ -78,7 +78,7 @@ export class TTSAdminCommand {
     }
   }
 
-  private async handleEnableChannel(interaction: CommandInteraction) {
+  private async handleEnableChannel(interaction: ChatInputCommandInteraction) {
     const channel = interaction.options.get('channel')?.channel;
     const autoJoin = interaction.options.get('auto-join')?.value ?? true;
 
@@ -108,7 +108,7 @@ export class TTSAdminCommand {
     }
   }
 
-  private async handleDisableChannel(interaction: CommandInteraction) {
+  private async handleDisableChannel(interaction: ChatInputCommandInteraction) {
     const channel = interaction.options.get('channel')?.channel;
 
     try {
@@ -129,7 +129,7 @@ export class TTSAdminCommand {
     }
   }
 
-  private async handleListChannels(interaction: CommandInteraction) {
+  private async handleListChannels(interaction: ChatInputCommandInteraction) {
     try {
       const result = await db.query(
         `SELECT channel_id, enabled, auto_join

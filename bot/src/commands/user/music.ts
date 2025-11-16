@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, CommandInteraction, GuildMember, VoiceChannel } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, GuildMember, VoiceChannel } from 'discord.js';
 import { logger } from '../../utils/logger';
 import { EmbedFactory } from '../../utils/embeds';
 import { getMusicPlayer } from '../../services/music/player';
@@ -90,7 +90,7 @@ export class MusicCommand {
         )
     );
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.data[0].name;
 
     // Check if user is in voice channel (except for queue and nowplaying)
@@ -146,7 +146,7 @@ export class MusicCommand {
     }
   }
 
-  private async handlePlay(interaction: CommandInteraction) {
+  private async handlePlay(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
 
     const query = interaction.options.get('url')?.value as string;
@@ -229,7 +229,7 @@ export class MusicCommand {
     }
   }
 
-  private async handlePause(interaction: CommandInteraction) {
+  private async handlePause(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     const paused = musicPlayer.pause(interaction.guildId!);
 
@@ -245,7 +245,7 @@ export class MusicCommand {
     }
   }
 
-  private async handleResume(interaction: CommandInteraction) {
+  private async handleResume(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     const resumed = musicPlayer.resume(interaction.guildId!);
 
@@ -261,7 +261,7 @@ export class MusicCommand {
     }
   }
 
-  private async handleSkip(interaction: CommandInteraction) {
+  private async handleSkip(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
 
@@ -280,7 +280,7 @@ export class MusicCommand {
     });
   }
 
-  private async handleStop(interaction: CommandInteraction) {
+  private async handleStop(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     musicPlayer.stop(interaction.guildId!);
 
@@ -289,7 +289,7 @@ export class MusicCommand {
     });
   }
 
-  private async handleQueue(interaction: CommandInteraction) {
+  private async handleQueue(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
 
@@ -331,7 +331,7 @@ export class MusicCommand {
     });
   }
 
-  private async handleNowPlaying(interaction: CommandInteraction) {
+  private async handleNowPlaying(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     const track = musicPlayer.getNowPlaying(interaction.guildId!);
 
@@ -364,7 +364,7 @@ export class MusicCommand {
     });
   }
 
-  private async handleVolume(interaction: CommandInteraction) {
+  private async handleVolume(interaction: ChatInputCommandInteraction) {
     const level = interaction.options.get('level')?.value as number;
     const musicPlayer = getMusicPlayer();
 
@@ -375,7 +375,7 @@ export class MusicCommand {
     });
   }
 
-  private async handleShuffle(interaction: CommandInteraction) {
+  private async handleShuffle(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
 
@@ -394,7 +394,7 @@ export class MusicCommand {
     });
   }
 
-  private async handleLoop(interaction: CommandInteraction) {
+  private async handleLoop(interaction: ChatInputCommandInteraction) {
     const mode = interaction.options.get('mode')?.value as string;
     const musicPlayer = getMusicPlayer();
 
@@ -420,7 +420,7 @@ export class MusicCommand {
     });
   }
 
-  private async handleRemove(interaction: CommandInteraction) {
+  private async handleRemove(interaction: ChatInputCommandInteraction) {
     const position = interaction.options.get('position')?.value as number;
     const musicPlayer = getMusicPlayer();
 

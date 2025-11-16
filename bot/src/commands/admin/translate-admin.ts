@@ -1,6 +1,6 @@
 import {
   SlashCommandBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ChannelType,
   PermissionFlagsBits,
 } from 'discord.js';
@@ -95,7 +95,7 @@ export class TranslateAdminCommand {
         )
     );
 
-  async execute(interaction: CommandInteraction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     // Check permissions
     const hasPermission = await PermissionManager.hasAdminPermission(interaction);
     if (!hasPermission) {
@@ -129,7 +129,7 @@ export class TranslateAdminCommand {
     }
   }
 
-  private async handleSetup(interaction: CommandInteraction) {
+  private async handleSetup(interaction: ChatInputCommandInteraction) {
     const sourceChannel = interaction.options.get('source-channel')?.channel;
     const targetChannel = interaction.options.get('target-channel')?.channel;
     const sourceLang = interaction.options.get('source-lang')?.value as string;
@@ -194,7 +194,7 @@ export class TranslateAdminCommand {
     }
   }
 
-  private async handleRemove(interaction: CommandInteraction) {
+  private async handleRemove(interaction: ChatInputCommandInteraction) {
     const pairId = interaction.options.get('pair-id')?.value as number;
 
     try {
@@ -223,7 +223,7 @@ export class TranslateAdminCommand {
     }
   }
 
-  private async handleList(interaction: CommandInteraction) {
+  private async handleList(interaction: ChatInputCommandInteraction) {
     try {
       const result = await db.query(
         `SELECT id, source_channel_id, target_channel_id, source_lang, target_lang, bidirectional, enabled
@@ -267,7 +267,7 @@ export class TranslateAdminCommand {
     }
   }
 
-  private async handleEnable(interaction: CommandInteraction) {
+  private async handleEnable(interaction: ChatInputCommandInteraction) {
     const pairId = interaction.options.get('pair-id')?.value as number;
 
     try {
@@ -288,7 +288,7 @@ export class TranslateAdminCommand {
     }
   }
 
-  private async handleDisable(interaction: CommandInteraction) {
+  private async handleDisable(interaction: ChatInputCommandInteraction) {
     const pairId = interaction.options.get('pair-id')?.value as number;
 
     try {

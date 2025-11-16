@@ -1,4 +1,4 @@
-import { CommandInteraction, PermissionFlagsBits, GuildMember } from 'discord.js';
+import { ChatInputCommandInteraction, PermissionFlagsBits, GuildMember } from 'discord.js';
 import { db } from '../database/client';
 import { logger } from '../utils/logger';
 
@@ -6,7 +6,7 @@ export class PermissionManager {
   /**
    * Check if user has admin permissions
    */
-  static async hasAdminPermission(interaction: CommandInteraction): Promise<boolean> {
+  static async hasAdminPermission(interaction: ChatInputCommandInteraction): Promise<boolean> {
     if (!interaction.guild || !interaction.member) {
       return false;
     }
@@ -96,7 +96,7 @@ export class PermissionManager {
   /**
    * Check if user is in a voice channel
    */
-  static isInVoiceChannel(interaction: CommandInteraction): boolean {
+  static isInVoiceChannel(interaction: ChatInputCommandInteraction): boolean {
     const member = interaction.member as GuildMember;
     return member?.voice?.channel !== null && member?.voice?.channel !== undefined;
   }
