@@ -21,6 +21,16 @@ export class MusicStreamingService {
     const lavalinkPassword = process.env.LAVALINK_PASSWORD || 'youshallnotpass';
 
     logger.info(`Initializing Lavalink manager with host: ${lavalinkHost}:${lavalinkPort}`);
+    logger.debug(`Lavalink password: ${lavalinkPassword.substring(0, 3)}...${lavalinkPassword.substring(lavalinkPassword.length - 3)}`);
+
+    const clientId = client.user?.id;
+    const clientUsername = client.user?.username || 'DiscordBot';
+
+    if (!clientId) {
+      throw new Error('Client user ID is not available. Ensure the bot is logged in before initializing MusicStreamingService.');
+    }
+
+    logger.info(`Lavalink client ID: ${clientId}, username: ${clientUsername}`);
 
     this.manager = new LavalinkManager({
       nodes: [
@@ -45,8 +55,8 @@ export class MusicStreamingService {
       },
       autoSkip: true,
       client: {
-        id: client.user?.id || '',
-        username: client.user?.username || 'bot',
+        id: clientId,
+        username: clientUsername,
       },
       playerOptions: {
         defaultSearchPlatform: 'ytsearch',
@@ -57,6 +67,17 @@ export class MusicStreamingService {
         },
         onEmptyQueue: {
           destroyAfterMs: 300000, // 5 minutes
+        },
+      },
+      advancedOptions: {
+        enableDebugEvents: true,
+        maxFilterFixDuration: 600000,
+        debugOptions: {
+          noAudio: false,
+          playerDestroy: {
+            dontThrowError: false,
+            debugLog: true,
+          },
         },
       },
     });
@@ -107,10 +128,13 @@ export class MusicStreamingService {
    */
   async initialize(clientId: string): Promise<void> {
     try {
-      // Update client ID after bot is ready
-      this.manager.options.client.id = clientId;
-      await this.manager.init({ id: clientId, username: this.manager.options.client.username });
-      logger.info('Lavalink manager initialized');
+      // Initialize the manager - this will connect to the nodes
+      await this.manager.init({
+        id: clientId,
+        username: this.manager.options.client.username || 'DiscordBot',
+      });
+      this.initialized = true;
+      logger.info('Lavalink manager initialized and connected');
     } catch (error) {
       logger.error('Failed to initialize Lavalink manager', error);
       throw error;
