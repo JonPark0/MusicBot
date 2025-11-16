@@ -18,7 +18,7 @@ torchaudio==2.5.1+cu124
 
 numpy==1.26.4
 scipy==1.15.2
-librosa==0.10.2
+librosa==0.11.0
 soundfile==0.13.1
 aiofiles==24.1.0
 asyncpg==0.30.0
