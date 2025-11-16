@@ -12,7 +12,8 @@ services:
     expose:
       - "2333"
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:2333/version || exit 1"]
+      # Use /version endpoint with Authorization header to avoid warning logs
+      test: ["CMD-SHELL", "curl -s -H 'Authorization: ${LAVALINK_PASSWORD:-youshallnotpass}' http://localhost:2333/version || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
