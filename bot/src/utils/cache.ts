@@ -35,7 +35,12 @@ class CacheManager {
       return null;
     }
     try {
-      return await this.client.get(key);
+      const result = await this.client.get(key);
+      // Handle Redis 5.x return type which can be string | null | {}
+      if (typeof result === 'string') {
+        return result;
+      }
+      return null;
     } catch (error) {
       logger.error('Redis GET error', { key, error });
       return null;
