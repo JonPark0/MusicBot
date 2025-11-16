@@ -10,7 +10,9 @@ RUN apk add --no-cache \
     pixman-dev \
     cairo-dev \
     pango-dev \
-    libc-dev
+    libc-dev \
+    ca-certificates \
+    curl
 
 WORKDIR /app
 

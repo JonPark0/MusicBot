@@ -121,7 +121,9 @@ export class MusicPlayer {
           leaveOnEmptyCooldown: 300000, // 5 minutes
           selfDeaf: true,
           volume: 50,
-          bufferingTimeout: 3000,
+          bufferingTimeout: 30000, // 30 seconds for slow connections
+          connectionTimeout: 30000, // 30 seconds to establish connection
+          skipOnNoStream: true, // Skip track if stream fails
         });
       }
 
