@@ -126,3 +126,64 @@ class AudioProcessor:
             return audio
 
         return librosa.resample(audio, orig_sr=orig_sr, target_sr=target_sr)
+
+    def concatenate_audio_files(self, audio_paths: list[str], output_path: str, silence_ms: int = 100):
+        """
+        Concatenate multiple audio files with optional silence between them.
+
+        Args:
+            audio_paths: List of paths to audio files to concatenate
+            output_path: Path to save the concatenated audio
+            silence_ms: Milliseconds of silence to add between chunks
+        """
+        if not audio_paths:
+            raise ValueError("No audio files to concatenate")
+
+        if len(audio_paths) == 1:
+            # Just copy the single file
+            import shutil
+            shutil.copy(audio_paths[0], output_path)
+            return
+
+        try:
+            logger.info(f"Concatenating {len(audio_paths)} audio files")
+
+            # Load all audio files
+            audio_segments = []
+            sample_rate = None
+
+            for audio_path in audio_paths:
+                audio, sr = librosa.load(audio_path, sr=self.target_sr, mono=True)
+                audio_segments.append(audio)
+
+                if sample_rate is None:
+                    sample_rate = sr
+                elif sr != sample_rate:
+                    # Resample if needed
+                    audio = self.resample(audio, sr, sample_rate)
+
+            # Create silence
+            silence_samples = int((silence_ms / 1000) * sample_rate)
+            silence = np.zeros(silence_samples, dtype=np.float32)
+
+            # Concatenate with silence between segments
+            concatenated = []
+            for i, segment in enumerate(audio_segments):
+                concatenated.append(segment)
+                if i < len(audio_segments) - 1:  # Don't add silence after last segment
+                    concatenated.append(silence)
+
+            # Combine all segments
+            final_audio = np.concatenate(concatenated)
+
+            # Normalize the final audio
+            final_audio = self.normalize_audio(final_audio)
+
+            # Save
+            sf.write(output_path, final_audio, sample_rate, subtype='PCM_16')
+
+            logger.info(f"Audio concatenated successfully: {output_path}")
+
+        except Exception as e:
+            logger.error(f"Audio concatenation failed: {e}")
+            raise

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from models.xtts import XTTSModel
 from utils.audio_processing import AudioProcessor
+from utils.text_chunker import split_text_into_chunks, get_char_limit
 
 # Configure logging
 logging.basicConfig(
@@ -174,14 +175,15 @@ async def register_voice(
 @app.post("/synthesize")
 async def synthesize_speech(request: SynthesizeRequest):
     """
-    Synthesize speech from text using user's voice
+    Synthesize speech from text using user's voice.
+    Automatically splits long text into chunks and concatenates audio.
     """
     try:
-        # Validate text length
-        if len(request.text) > 500:
+        # Validate text length (increased limit since we now support chunking)
+        if len(request.text) > 2000:
             raise HTTPException(
                 status_code=400,
-                detail="Text too long (max 500 characters)"
+                detail="Text too long (max 2000 characters)"
             )
 
         if len(request.text.strip()) == 0:
@@ -204,10 +206,10 @@ async def synthesize_speech(request: SynthesizeRequest):
                 detail=f"Voice '{voice_name}' not found for user {request.user_id}"
             )
 
-        # Generate unique filename
+        # Generate unique filename for final output
         import hashlib
         text_hash = hashlib.md5(
-            f"{request.user_id}{voice_name}{request.text}".encode()
+            f"{request.user_id}{voice_name}{request.text}{request.speed}".encode()
         ).hexdigest()
         output_path = CACHE_DIR / f"{text_hash}.wav"
 
@@ -220,15 +222,53 @@ async def synthesize_speech(request: SynthesizeRequest):
                 filename="tts_output.wav"
             )
 
-        # Synthesize speech
-        logger.info(f"Synthesizing speech for user {request.user_id}")
-        tts_model.synthesize(
-            text=request.text,
-            speaker_wav=str(voice_path),
-            language=request.language,
-            output_path=str(output_path),
-            speed=request.speed
-        )
+        # Split text into chunks if needed
+        text_chunks = split_text_into_chunks(request.text, request.language)
+
+        logger.info(f"Synthesizing speech for user {request.user_id} ({len(text_chunks)} chunk(s))")
+
+        if len(text_chunks) == 1:
+            # Single chunk - synthesize directly
+            tts_model.synthesize(
+                text=text_chunks[0],
+                speaker_wav=str(voice_path),
+                language=request.language,
+                output_path=str(output_path),
+                speed=request.speed
+            )
+        else:
+            # Multiple chunks - synthesize each and concatenate
+            chunk_paths = []
+            try:
+                for i, chunk in enumerate(text_chunks):
+                    chunk_hash = hashlib.md5(
+                        f"{text_hash}_chunk_{i}".encode()
+                    ).hexdigest()
+                    chunk_path = CACHE_DIR / f"{chunk_hash}_temp.wav"
+
+                    logger.info(f"Synthesizing chunk {i+1}/{len(text_chunks)}: '{chunk[:30]}...'")
+
+                    tts_model.synthesize(
+                        text=chunk,
+                        speaker_wav=str(voice_path),
+                        language=request.language,
+                        output_path=str(chunk_path),
+                        speed=request.speed
+                    )
+                    chunk_paths.append(str(chunk_path))
+
+                # Concatenate all chunks
+                logger.info(f"Concatenating {len(chunk_paths)} audio chunks")
+                audio_processor.concatenate_audio_files(chunk_paths, str(output_path))
+
+            finally:
+                # Clean up temporary chunk files
+                for chunk_path in chunk_paths:
+                    try:
+                        if os.path.exists(chunk_path):
+                            os.remove(chunk_path)
+                    except Exception as e:
+                        logger.warning(f"Failed to remove temp file {chunk_path}: {e}")
 
         return FileResponse(
             output_path,
