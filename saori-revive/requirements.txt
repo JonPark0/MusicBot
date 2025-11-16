@@ -1,0 +1,5 @@
+discord.py
+lavalink
+PyNaCl
+aiohttp
+asyncio
