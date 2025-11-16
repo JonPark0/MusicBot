@@ -1,9 +1,10 @@
 # Discord 다기능 봇
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.10+-green.svg)](https://www.python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![CUDA](https://img.shields.io/badge/CUDA-12.4-76B900.svg)](https://developer.nvidia.com/cuda-toolkit)
 
 한국어 | [English](./README.md)
 
@@ -14,7 +15,7 @@
 ### 번역 기능
 
 - Google Gemini AI API를 사용한 채널 간 자동 번역
-- LibreTranslate를 이용한 오프라인/백업 번역 지원
+- 선택적 LibreTranslate 오프라인/백업 번역 지원
 - Discord 포맷을 보존하는 문맥 인식 번역
 - 양방향 번역 지원
 - 다국어 지원: 한국어, 영어, 일본어, 중국어, 스페인어, 프랑스어, 독일어, 러시아어, 포르투갈어, 이탈리아어
@@ -39,22 +40,22 @@
 
 ```
 Docker Compose 스택
-├── Discord Bot (Node.js/TypeScript)
-├── TTS 서비스 (Python/FastAPI)
-├── LibreTranslate (백업 번역)
-├── PostgreSQL 데이터베이스
-└── Redis 캐시 & 큐
+├── Discord Bot (Node.js 22 / TypeScript 5.9)
+├── TTS 서비스 (Python 3.11 / FastAPI / CUDA 12.4)
+├── LibreTranslate (선택 - 백업 번역)
+├── PostgreSQL 17 데이터베이스
+└── Redis 7 캐시 & 큐
 ```
 
 ## 기술 스택
 
-- **Discord Bot**: Node.js, TypeScript, discord.js v14
-- **TTS 서비스**: Python, FastAPI, Coqui XTTS-v2, PyTorch
-- **번역**: Google Gemini 2.0 Flash, LibreTranslate
-- **음악**: discord-player v7, FFmpeg, @discordjs/voice
-- **데이터베이스**: PostgreSQL 15
+- **Discord Bot**: Node.js 22, TypeScript 5.9, discord.js v14.24
+- **TTS 서비스**: Python 3.11, FastAPI 0.115, Coqui XTTS-v2, PyTorch 2.5, CUDA 12.4
+- **번역**: Google Gemini 2.0 Flash, LibreTranslate (선택)
+- **음악**: discord-player v7.1, FFmpeg, @discordjs/voice 0.19
+- **데이터베이스**: PostgreSQL 17
 - **캐시**: Redis 7
-- **배포**: Docker, Docker Compose
+- **배포**: Docker, Docker Compose, NVIDIA Container Toolkit (GPU용)
 
 ## 요구 사항
 
@@ -68,6 +69,8 @@ Docker Compose 스택
 
 ## 빠른 시작
 
+### 기본 설정 (CPU)
+
 ```bash
 # 1. 저장소 클론
 git clone https://github.com/yourusername/discord_bot.git
@@ -79,12 +82,37 @@ cp .env.example .env
 # 3. .env 파일 편집 후 토큰 입력
 nano .env
 
-# 4. 서비스 시작
-docker-compose up -d
+# 4. Discord Developer Portal 설정
+# https://discord.com/developers/applications 접속
+# 봇 선택 → Bot → "MESSAGE CONTENT INTENT"와 "SERVER MEMBERS INTENT" 활성화
 
-# 5. 슬래시 명령어 배포
-docker-compose exec discord-bot npm run deploy-commands
+# 5. 서비스 시작
+docker compose up -d
+
+# 6. 슬래시 명령어 배포
+docker compose exec discord-bot npm run deploy-commands
 ```
+
+### GPU/CUDA 설정 (TTS 성능 향상)
+
+**NVIDIA GPU** 사용자를 위한 CUDA 지원:
+
+```bash
+# 1-4. 위와 동일 (클론, 환경 설정, 구성)
+
+# 5. GPU 지원으로 시작
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+
+# 6. 슬래시 명령어 배포
+docker compose exec discord-bot npm run deploy-commands
+```
+
+**GPU 요구사항:**
+- CUDA 지원 NVIDIA GPU
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) 설치
+- NVIDIA 드라이버 버전 525.60.13 이상
+
+GPU는 CPU 대비 **2-3배 빠른** TTS 합성을 제공합니다.
 
 ## 설정
 
@@ -98,10 +126,23 @@ GEMINI_API_KEY=제미나이_API_키
 POSTGRES_PASSWORD=안전한_비밀번호
 REDIS_PASSWORD=레디스_비밀번호
 
-# 선택
+# 선택 - 음악 플랫폼 (API 키 없이 작동)
 SPOTIFY_CLIENT_ID=스포티파이_클라이언트_ID
 SPOTIFY_CLIENT_SECRET=스포티파이_시크릿
+
+# 선택 - LibreTranslate (백업 번역을 원하는 경우)
+# LIBRETRANSLATE_URL=http://libretranslate:5000
 ```
+
+### Discord Developer Portal 설정
+
+**중요**: 봇 설정에서 다음 Privileged Gateway Intents를 활성화하세요:
+1. [Discord Developer Portal](https://discord.com/developers/applications)로 이동
+2. 애플리케이션 선택 → **Bot** 섹션
+3. 활성화:
+   - ✅ **MESSAGE CONTENT INTENT**
+   - ✅ **SERVER MEMBERS INTENT**
+4. 변경사항 저장
 
 ## 문서
 
@@ -121,14 +162,14 @@ SPOTIFY_CLIENT_SECRET=스포티파이_시크릿
 ## 성능
 
 - 번역: 메시지당 약 1-2초 (Gemini) 또는 0.5초 (캐시됨)
-- TTS: 음성 생성 약 2-5초 (CPU), 1-2초 (GPU)
+- TTS: 음성 생성 약 2-5초 (CPU), **약 1-2초 (GPU/CUDA)**
 - 음악: 스트리밍을 통한 즉시 재생
 - 리소스 사용량:
   - 봇: 약 200MB RAM
-  - TTS 서비스: 약 2-4GB RAM (모델 로드 시)
-  - LibreTranslate: 약 1GB RAM
+  - TTS 서비스: 약 2-4GB RAM (모델 로드 시), 약 4-6GB VRAM (GPU)
   - PostgreSQL: 약 100MB RAM
   - Redis: 약 50MB RAM
+  - (선택) LibreTranslate: 약 1GB RAM
 
 ## 기여
 
@@ -141,10 +182,10 @@ MIT License - 자세한 내용은 [LICENSE](LICENSE) 파일 참조
 ## 감사의 말
 
 - [discord.js](https://discord.js.org/) - Discord API 라이브러리
-- [Coqui TTS](https://github.com/coqui-ai/TTS) - XTTS-v2 모델
+- [Coqui TTS](https://github.com/idiap/coqui-ai-TTS) - XTTS-v2 모델
 - [Google Gemini](https://ai.google.dev/) - AI 기반 번역
 - [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) - 오픈소스 번역
-- [discord-player v7](https://github.com/discord-player v7/discord-player v7) - 음악 스트리밍 라이브러리
+- [discord-player](https://github.com/Androz2091/discord-player) - 음악 스트리밍 라이브러리
 
 ## 지원
 

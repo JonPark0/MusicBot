@@ -1,9 +1,10 @@
 # Discord Multi-Function Bot
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.10+-green.svg)](https://www.python.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
+[![CUDA](https://img.shields.io/badge/CUDA-12.4-76B900.svg)](https://developer.nvidia.com/cuda-toolkit)
 
 [한국어](./README.ko.md) | English
 
@@ -14,7 +15,7 @@ A powerful, self-hosted Discord bot with translation, TTS (Text-to-Speech), and 
 ### Translation
 
 - Automatic cross-channel translation using Google Gemini AI API
-- Failsafe support with LibreTranslate for offline/backup translation
+- Optional LibreTranslate support for offline/backup translation
 - Context-aware translation that preserves Discord formatting
 - Bidirectional translation support
 - Multi-language support: English, Korean, Japanese, Chinese, Spanish, French, German, Russian, Portuguese, Italian
@@ -39,22 +40,22 @@ A powerful, self-hosted Discord bot with translation, TTS (Text-to-Speech), and 
 
 ```
 Docker Compose Stack
-├── Discord Bot (Node.js/TypeScript)
-├── TTS Service (Python/FastAPI)
-├── LibreTranslate (Failsafe)
-├── PostgreSQL Database
-└── Redis Cache & Queue
+├── Discord Bot (Node.js 22 / TypeScript 5.9)
+├── TTS Service (Python 3.11 / FastAPI / CUDA 12.4)
+├── LibreTranslate (Optional - Failsafe)
+├── PostgreSQL 17 Database
+└── Redis 7 Cache & Queue
 ```
 
 ## Tech Stack
 
-- **Discord Bot**: Node.js, TypeScript, discord.js v14
-- **TTS Service**: Python, FastAPI, Coqui XTTS-v2, PyTorch
-- **Translation**: Google Gemini 2.0 Flash, LibreTranslate
-- **Music**: discord-player v7, FFmpeg, @discordjs/voice
-- **Database**: PostgreSQL 15
+- **Discord Bot**: Node.js 22, TypeScript 5.9, discord.js v14.24
+- **TTS Service**: Python 3.11, FastAPI 0.115, Coqui XTTS-v2, PyTorch 2.5, CUDA 12.4
+- **Translation**: Google Gemini 2.0 Flash, LibreTranslate (optional)
+- **Music**: discord-player v7.1, FFmpeg, @discordjs/voice 0.19
+- **Database**: PostgreSQL 17
 - **Cache**: Redis 7
-- **Deployment**: Docker, Docker Compose
+- **Deployment**: Docker, Docker Compose, NVIDIA Container Toolkit (for GPU)
 
 ## Prerequisites
 
@@ -68,6 +69,8 @@ Docker Compose Stack
 
 ## Quick Start
 
+### Standard Setup (CPU)
+
 ```bash
 # 1. Clone the repository
 git clone https://github.com/yourusername/discord_bot.git
@@ -79,12 +82,37 @@ cp .env.example .env
 # 3. Edit .env and add your tokens
 nano .env
 
-# 4. Start the services
-docker-compose up -d
+# 4. Configure Discord Developer Portal
+# Go to https://discord.com/developers/applications
+# Select your bot → Bot → Enable "MESSAGE CONTENT INTENT" and "SERVER MEMBERS INTENT"
 
-# 5. Deploy slash commands
-docker-compose exec discord-bot npm run deploy-commands
+# 5. Start the services
+docker compose up -d
+
+# 6. Deploy slash commands
+docker compose exec discord-bot npm run deploy-commands
 ```
+
+### GPU/CUDA Setup (Recommended for TTS)
+
+For **NVIDIA GPU** users with CUDA support:
+
+```bash
+# 1-4. Same as above (clone, env, configure)
+
+# 5. Start with GPU support
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+
+# 6. Deploy slash commands
+docker compose exec discord-bot npm run deploy-commands
+```
+
+**Requirements for GPU:**
+- NVIDIA GPU with CUDA support
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed
+- NVIDIA drivers version 525.60.13 or higher
+
+GPU provides **2-3x faster** TTS synthesis compared to CPU.
 
 ## Configuration
 
@@ -98,10 +126,23 @@ GEMINI_API_KEY=your_gemini_api_key
 POSTGRES_PASSWORD=your_secure_password
 REDIS_PASSWORD=your_redis_password
 
-# Optional
+# Optional - Music Platforms (work without API keys)
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+
+# Optional - LibreTranslate (if you want fallback translation)
+# LIBRETRANSLATE_URL=http://libretranslate:5000
 ```
+
+### Discord Developer Portal Setup
+
+**Important**: Enable these Privileged Gateway Intents in your bot settings:
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
+2. Select your application → **Bot** section
+3. Enable:
+   - ✅ **MESSAGE CONTENT INTENT**
+   - ✅ **SERVER MEMBERS INTENT**
+4. Save Changes
 
 ## Documentation
 
@@ -121,14 +162,14 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 ## Performance
 
 - Translation: ~1-2 seconds per message (Gemini) or ~0.5s (cached)
-- TTS: ~2-5 seconds to generate speech (CPU), ~1-2s (GPU)
+- TTS: ~2-5 seconds to generate speech (CPU), **~1-2s (GPU/CUDA)**
 - Music: Near-instant playback with streaming
 - Resource Usage:
   - Bot: ~200MB RAM
-  - TTS Service: ~2-4GB RAM (model loaded)
-  - LibreTranslate: ~1GB RAM
+  - TTS Service: ~2-4GB RAM (model loaded), ~4-6GB VRAM (GPU)
   - PostgreSQL: ~100MB RAM
   - Redis: ~50MB RAM
+  - (Optional) LibreTranslate: ~1GB RAM
 
 ## Contributing
 
