@@ -4,12 +4,13 @@ server:
 
 lavalink:
   plugins:
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.11.2"
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.16.0"
       snapshot: false
   server:
     password: "${LAVALINK_PASSWORD:youshallnotpass}"
     sources:
-      youtube: true
+      # IMPORTANT: Disable built-in YouTube source to use the plugin instead
+      youtube: false
       bandcamp: true
       soundcloud: true
       twitch: true
@@ -42,12 +43,10 @@ plugins:
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
     clients:
-      - ANDROID_TESTSUITE
-      - ANDROID_LITE
-      - ANDROID_MUSIC
-      - IOS
-      - TVHTML5_EMBEDDED
+      - MUSIC
+      - ANDROID_VR
       - WEB
+      - WEBEMBEDDED
     rotation:
       rotatingIPs: []
       retryLimit: 0
