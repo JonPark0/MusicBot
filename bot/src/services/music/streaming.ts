@@ -1,8 +1,6 @@
-import { Player, SearchResult, Track as DPTrack, QueryType } from 'discord-player';
-import { YoutubeiExtractor } from 'discord-player-youtubei';
-import { Client } from 'discord.js';
+import { LavalinkManager, LavalinkNode } from 'lavalink-client';
+import { Client, GatewayDispatchEvents } from 'discord.js';
 import { logger } from '../../utils/logger';
-import { config } from '../../config/constants';
 
 export interface Track {
   title: string;
@@ -14,88 +12,168 @@ export interface Track {
 }
 
 export class MusicStreamingService {
-  private player: Player;
+  private manager: LavalinkManager;
   private initialized: boolean = false;
 
   constructor(client: Client) {
-    this.player = new Player(client, {
-      skipFFmpeg: false,
+    const lavalinkHost = process.env.LAVALINK_HOST || 'lavalink';
+    const lavalinkPort = parseInt(process.env.LAVALINK_PORT || '2333', 10);
+    const lavalinkPassword = process.env.LAVALINK_PASSWORD || 'youshallnotpass';
+
+    logger.info(`Initializing Lavalink manager with host: ${lavalinkHost}:${lavalinkPort}`);
+
+    this.manager = new LavalinkManager({
+      nodes: [
+        {
+          authorization: lavalinkPassword,
+          host: lavalinkHost,
+          port: lavalinkPort,
+          id: 'main',
+          requestSignalTimeoutMS: 30000,
+          closeOnError: false,
+          heartBeatInterval: 30000,
+          retryAmount: 5,
+          retryDelay: 10000,
+          secure: false,
+        },
+      ],
+      sendToShard: (guildId, payload) => {
+        const guild = client.guilds.cache.get(guildId);
+        if (guild) {
+          guild.shard.send(payload);
+        }
+      },
+      autoSkip: true,
+      client: {
+        id: client.user?.id || '',
+        username: client.user?.username || 'bot',
+      },
+      playerOptions: {
+        defaultSearchPlatform: 'ytsearch',
+        volumeDecrementer: 0.5,
+        onDisconnect: {
+          autoReconnect: true,
+          destroyPlayer: false,
+        },
+        onEmptyQueue: {
+          destroyAfterMs: 300000, // 5 minutes
+        },
+      },
     });
 
-    this.initializePlayer();
+    this.setupEventHandlers(client);
   }
 
-  private async initializePlayer() {
-    try {
-      // Load YoutubeiExtractor for YouTube, Spotify, SoundCloud support
-      // This is the recommended extractor for discord-player v7
-      const extractorOptions: Record<string, unknown> = {
-        // Use IOS client which doesn't require signature deciphering
-        streamOptions: {
-          useClient: 'IOS',
-        },
-        // Disable JavaScript player to avoid signature decipher issues
-        disablePlayer: true,
-      };
-
-      // Add YouTube cookie authentication if provided
-      const youtubeCookie = process.env.YOUTUBE_COOKIE;
-      if (youtubeCookie) {
-        extractorOptions.cookie = youtubeCookie;
-        logger.info('YouTube cookie authentication enabled');
+  private setupEventHandlers(client: Client) {
+    // Forward Discord voice state updates to Lavalink
+    client.on('raw', (d) => {
+      if (
+        d.t === GatewayDispatchEvents.VoiceStateUpdate ||
+        d.t === GatewayDispatchEvents.VoiceServerUpdate
+      ) {
+        this.manager.sendRawData(d);
       }
+    });
 
-      await this.player.extractors.register(YoutubeiExtractor, extractorOptions);
+    // Lavalink node events
+    this.manager.nodeManager.on('create', (node) => {
+      logger.info(`Lavalink node created: ${node.id}`);
+    });
 
-      logger.info('Discord-player extractors loaded successfully');
-
+    this.manager.nodeManager.on('connect', (node) => {
+      logger.info(`Lavalink node connected: ${node.id}`);
       this.initialized = true;
-      logger.info('Discord-player initialized successfully');
+    });
+
+    this.manager.nodeManager.on('disconnect', (node) => {
+      logger.warn(`Lavalink node disconnected: ${node.id}`);
+    });
+
+    this.manager.nodeManager.on('error', (node, error) => {
+      logger.error(`Lavalink node error: ${node.id}`, { error: error.message });
+    });
+
+    this.manager.nodeManager.on('reconnecting', (node) => {
+      logger.info(`Lavalink node reconnecting: ${node.id}`);
+    });
+
+    this.manager.nodeManager.on('resumed', (node, payload, players) => {
+      logger.info(`Lavalink node resumed: ${node.id}, players: ${players}`);
+    });
+  }
+
+  /**
+   * Initialize the Lavalink manager
+   */
+  async initialize(clientId: string): Promise<void> {
+    try {
+      // Update client ID after bot is ready
+      this.manager.options.client.id = clientId;
+      await this.manager.init({ id: clientId, username: this.manager.options.client.username });
+      logger.info('Lavalink manager initialized');
     } catch (error) {
-      logger.error('Failed to initialize discord-player', error);
-      this.initialized = false;
+      logger.error('Failed to initialize Lavalink manager', error);
+      throw error;
     }
   }
 
   /**
-   * Get the discord-player instance
+   * Get the Lavalink manager instance
    */
-  getPlayer(): Player {
-    return this.player;
+  getManager(): LavalinkManager {
+    return this.manager;
   }
 
   /**
-   * Check if player is initialized
+   * Check if manager is initialized
    */
   isInitialized(): boolean {
     return this.initialized;
   }
 
   /**
+   * Search for tracks using Lavalink
+   */
+  async search(query: string, requestedBy: string): Promise<Track[]> {
+    try {
+      if (!this.initialized) {
+        logger.warn('Lavalink not initialized yet');
+        return [];
+      }
+
+      // Add search prefix if not a URL
+      let searchQuery = query;
+      if (!query.startsWith('http')) {
+        searchQuery = `ytsearch:${query}`;
+      }
+
+      const node = this.manager.nodeManager.leastUsedNodes()[0];
+      if (!node) {
+        logger.error('No Lavalink nodes available');
+        return [];
+      }
+
+      const result = await node.search({ query: searchQuery }, requestedBy);
+
+      if (!result || result.loadType === 'error' || result.loadType === 'empty') {
+        logger.warn('No tracks found', { query });
+        return [];
+      }
+
+      const tracks = result.tracks.slice(0, 10).map((track) => this.convertTrack(track, requestedBy));
+      return tracks;
+    } catch (error) {
+      logger.error('Search failed', { error, query });
+      return [];
+    }
+  }
+
+  /**
    * Get track information from URL or search query
    */
   async getTrack(query: string, requestedBy: string): Promise<Track | null> {
-    try {
-      if (!this.initialized) {
-        logger.warn('Player not initialized yet');
-        return null;
-      }
-
-      const searchResult = await this.player.search(query, {
-        requestedBy: requestedBy,
-      });
-
-      if (!searchResult || !searchResult.hasTracks()) {
-        logger.warn('No tracks found', { query });
-        return null;
-      }
-
-      const track = searchResult.tracks[0];
-      return this.convertTrack(track, requestedBy);
-    } catch (error) {
-      logger.error('Error getting track info', { error, query });
-      return null;
-    }
+    const tracks = await this.search(query, requestedBy);
+    return tracks.length > 0 ? tracks[0] : null;
   }
 
   /**
@@ -104,26 +182,31 @@ export class MusicStreamingService {
   async getPlaylist(url: string, requestedBy: string): Promise<Track[]> {
     try {
       if (!this.initialized) {
-        logger.warn('Player not initialized yet');
+        logger.warn('Lavalink not initialized yet');
         return [];
       }
 
-      const searchResult = await this.player.search(url, {
-        requestedBy: requestedBy,
-      });
+      const node = this.manager.nodeManager.leastUsedNodes()[0];
+      if (!node) {
+        logger.error('No Lavalink nodes available');
+        return [];
+      }
 
-      if (!searchResult || !searchResult.hasTracks()) {
+      const result = await node.search({ query: url }, requestedBy);
+
+      if (!result || result.loadType === 'error' || result.loadType === 'empty') {
         logger.warn('No tracks found in playlist', { url });
         return [];
       }
 
-      // If it's a playlist, return all tracks
-      if (searchResult.playlist) {
-        return searchResult.tracks.map((track) => this.convertTrack(track, requestedBy));
+      if (result.loadType === 'playlist') {
+        return result.tracks.map((track) => this.convertTrack(track, requestedBy));
       }
 
-      // Single track, return as array
-      return [this.convertTrack(searchResult.tracks[0], requestedBy)];
+      // Single track
+      return result.tracks.length > 0
+        ? [this.convertTrack(result.tracks[0], requestedBy)]
+        : [];
     } catch (error) {
       logger.error('Error getting playlist', { error, url });
       return [];
@@ -131,73 +214,43 @@ export class MusicStreamingService {
   }
 
   /**
-   * Search for tracks
+   * Convert Lavalink track to our Track interface
    */
-  async search(query: string, limit: number = 5, requestedBy: string = ''): Promise<Track[]> {
-    try {
-      if (!this.initialized) {
-        logger.warn('Player not initialized yet');
-        return [];
-      }
-
-      const searchResult = await this.player.search(query, {
-        requestedBy: requestedBy,
-        searchEngine: QueryType.AUTO,
-      });
-
-      if (!searchResult || !searchResult.hasTracks()) {
-        logger.warn('No search results', { query });
-        return [];
-      }
-
-      return searchResult.tracks
-        .slice(0, limit)
-        .map((track) => this.convertTrack(track, requestedBy));
-    } catch (error) {
-      logger.error('Search failed', { error, query });
-      return [];
-    }
-  }
-
-  /**
-   * Convert discord-player Track to our Track interface
-   */
-  private convertTrack(dpTrack: DPTrack, requestedBy: string): Track {
+  private convertTrack(lavalinkTrack: any, requestedBy: string): Track {
     return {
-      title: dpTrack.title,
-      url: dpTrack.url,
-      duration: Math.floor(dpTrack.durationMS / 1000),
-      platform: this.getPlatform(dpTrack),
+      title: lavalinkTrack.info?.title || 'Unknown',
+      url: lavalinkTrack.info?.uri || '',
+      duration: Math.floor((lavalinkTrack.info?.duration || 0) / 1000),
+      platform: this.getPlatform(lavalinkTrack),
       requestedBy: requestedBy,
-      thumbnail: dpTrack.thumbnail,
+      thumbnail: lavalinkTrack.info?.artworkUrl || lavalinkTrack.info?.thumbnail || undefined,
     };
   }
 
   /**
    * Get platform name from track
    */
-  private getPlatform(track: DPTrack): string {
-    const source = track.raw?.source || track.source;
+  private getPlatform(track: any): string {
+    const sourceName = track.info?.sourceName?.toLowerCase() || '';
+    const uri = track.info?.uri || '';
 
-    if (typeof source === 'string') {
-      const sourceLower = source.toLowerCase();
-      if (sourceLower.includes('youtube')) return 'youtube';
-      if (sourceLower.includes('spotify')) return 'spotify';
-      if (sourceLower.includes('soundcloud')) return 'soundcloud';
-    }
-
-    // Fallback to checking URL
-    if (track.url.includes('youtube.com') || track.url.includes('youtu.be')) {
+    if (sourceName.includes('youtube') || uri.includes('youtube.com') || uri.includes('youtu.be')) {
       return 'youtube';
     }
-    if (track.url.includes('spotify.com')) {
+    if (sourceName.includes('spotify') || uri.includes('spotify.com')) {
       return 'spotify';
     }
-    if (track.url.includes('soundcloud.com')) {
+    if (sourceName.includes('soundcloud') || uri.includes('soundcloud.com')) {
       return 'soundcloud';
     }
+    if (sourceName.includes('bandcamp') || uri.includes('bandcamp.com')) {
+      return 'bandcamp';
+    }
+    if (sourceName.includes('twitch') || uri.includes('twitch.tv')) {
+      return 'twitch';
+    }
 
-    return 'unknown';
+    return sourceName || 'unknown';
   }
 
   /**

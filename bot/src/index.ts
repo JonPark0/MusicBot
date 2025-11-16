@@ -80,8 +80,16 @@ class DiscordBot {
       logger.info(`Serving ${this.client.guilds.cache.size} guilds`);
 
       // Initialize music player
-      initializeMusicPlayer(this.client);
-      logger.info('Music player initialized');
+      const musicPlayer = initializeMusicPlayer(this.client);
+      logger.info('Music player created');
+
+      // Initialize Lavalink connection
+      try {
+        await musicPlayer.initialize();
+        logger.info('Lavalink manager initialized');
+      } catch (error) {
+        logger.error('Failed to initialize Lavalink', error);
+      }
 
       // Check database connection
       const dbHealthy = await db.healthCheck();
@@ -116,7 +124,7 @@ class DiscordBot {
         // Stop music player if active
         try {
           const musicPlayer = getMusicPlayer();
-          musicPlayer.stop(guild.id);
+          await musicPlayer.stop(guild.id);
         } catch (error) {
           logger.debug('Music player not initialized yet');
         }

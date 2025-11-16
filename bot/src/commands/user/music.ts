@@ -231,7 +231,7 @@ export class MusicCommand {
 
   private async handlePause(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
-    const paused = musicPlayer.pause(interaction.guildId!);
+    const paused = await musicPlayer.pause(interaction.guildId!);
 
     if (paused) {
       await interaction.reply({
@@ -247,7 +247,7 @@ export class MusicCommand {
 
   private async handleResume(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
-    const resumed = musicPlayer.resume(interaction.guildId!);
+    const resumed = await musicPlayer.resume(interaction.guildId!);
 
     if (resumed) {
       await interaction.reply({
@@ -282,7 +282,7 @@ export class MusicCommand {
 
   private async handleStop(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
-    musicPlayer.stop(interaction.guildId!);
+    await musicPlayer.stop(interaction.guildId!);
 
     await interaction.reply({
       embeds: [EmbedFactory.success('Stopped', 'Playback stopped and queue cleared.')],
@@ -368,7 +368,7 @@ export class MusicCommand {
     const level = interaction.options.get('level')?.value as number;
     const musicPlayer = getMusicPlayer();
 
-    musicPlayer.setVolume(interaction.guildId!, level);
+    await musicPlayer.setVolume(interaction.guildId!, level);
 
     await interaction.reply({
       embeds: [EmbedFactory.success('Volume Set', `Volume set to ${level}%`)],
