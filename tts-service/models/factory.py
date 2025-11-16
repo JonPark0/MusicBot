@@ -9,27 +9,14 @@ from .xtts import XTTSModel
 
 logger = logging.getLogger(__name__)
 
-# Try to import Chatterbox model (may not be available due to numpy conflict)
-try:
-    from .chatterbox import ChatterboxModel
-    CHATTERBOX_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"Chatterbox model not available: {e}")
-    ChatterboxModel = None
-    CHATTERBOX_AVAILABLE = False
-
 
 class TTSModelFactory:
     """Factory for managing multiple TTS models"""
 
-    # Registry of available models (dynamically built)
+    # Registry of available models
     AVAILABLE_MODELS = {
         "xtts-v2": XTTSModel,
     }
-
-    # Add Chatterbox if available
-    if CHATTERBOX_AVAILABLE:
-        AVAILABLE_MODELS["chatterbox"] = ChatterboxModel
 
     def __init__(self):
         self.models: Dict[str, BaseTTSModel] = {}

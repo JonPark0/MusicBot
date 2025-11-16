@@ -108,8 +108,7 @@ class SynthesizeRequest(BaseModel):
     voice_name: Optional[str] = None
     language: str = "en"
     speed: float = 1.0
-    model: Optional[str] = None  # TTS model to use (xtts-v2, chatterbox)
-    exaggeration: Optional[float] = None  # Chatterbox emotion control (0.0-1.0+)
+    model: Optional[str] = None  # TTS model to use (default: xtts-v2)
 
 
 @app.get("/")
@@ -254,9 +253,8 @@ async def synthesize_speech(request: SynthesizeRequest):
 
         # Generate unique filename for final output (include model in hash)
         import hashlib
-        extra_params = f"{request.exaggeration}" if request.exaggeration else ""
         text_hash = hashlib.md5(
-            f"{request.user_id}{voice_name}{request.text}{request.speed}{model_name}{extra_params}".encode()
+            f"{request.user_id}{voice_name}{request.text}{request.speed}{model_name}".encode()
         ).hexdigest()
         output_path = CACHE_DIR / f"{text_hash}.wav"
 
@@ -268,11 +266,6 @@ async def synthesize_speech(request: SynthesizeRequest):
                 media_type="audio/wav",
                 filename="tts_output.wav"
             )
-
-        # Prepare model-specific kwargs
-        model_kwargs = {}
-        if request.exaggeration is not None:
-            model_kwargs["exaggeration"] = request.exaggeration
 
         # Split text into chunks if needed
         text_chunks = split_text_into_chunks(request.text, request.language)
@@ -286,8 +279,7 @@ async def synthesize_speech(request: SynthesizeRequest):
                 speaker_wav=str(voice_path),
                 language=request.language,
                 output_path=str(output_path),
-                speed=request.speed,
-                **model_kwargs
+                speed=request.speed
             )
         else:
             # Multiple chunks - synthesize each and concatenate
@@ -306,8 +298,7 @@ async def synthesize_speech(request: SynthesizeRequest):
                         speaker_wav=str(voice_path),
                         language=request.language,
                         output_path=str(chunk_path),
-                        speed=request.speed,
-                        **model_kwargs
+                        speed=request.speed
                     )
                     chunk_paths.append(str(chunk_path))
 
