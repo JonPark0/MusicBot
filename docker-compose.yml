@@ -83,17 +83,17 @@ services:
     environment:
       - LT_LOAD_ONLY=en,ko,ja,zh,es,fr,de,ru,pt,it
       - LT_THREADS=4
-      - LT_API_KEYS=true
+      - LT_API_KEYS=false
     volumes:
       - libretranslate-data:/home/libretranslate/.local
     expose:
       - "5000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/languages"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:5000/languages || exit 1"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 90s
+      retries: 5
+      start_period: 300s
     networks:
       - discord-network
 
