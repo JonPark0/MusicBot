@@ -19,6 +19,9 @@ interface TTSQueue {
   userId: string;
   voiceName?: string;
   language: string;
+  speed?: number;
+  model?: string;
+  exaggeration?: number;
 }
 
 export class TTSPlayer {
@@ -105,7 +108,10 @@ export class TTSPlayer {
     text: string,
     userId: string,
     voiceName?: string,
-    language: string = 'en'
+    language: string = 'en',
+    speed: number = 1.0,
+    model?: string,
+    exaggeration?: number
   ): Promise<void> {
     const guildId = channel.guild.id;
 
@@ -116,7 +122,7 @@ export class TTSPlayer {
 
     // Add to queue
     const queue = this.queues.get(guildId) || [];
-    queue.push({ text, userId, voiceName, language });
+    queue.push({ text, userId, voiceName, language, speed, model, exaggeration });
     this.queues.set(guildId, queue);
 
     logger.info('TTS added to queue', { guildId, queueLength: queue.length });
@@ -157,7 +163,10 @@ export class TTSPlayer {
         item.userId,
         item.text,
         item.voiceName,
-        item.language
+        item.language,
+        item.speed || 1.0,
+        item.model,
+        item.exaggeration
       );
 
       // Save to temporary file

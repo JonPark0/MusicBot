@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS user_voices (
   audio_file_path TEXT NOT NULL,
   language VARCHAR(10) DEFAULT 'ko',
   speed FLOAT DEFAULT 1.0 CHECK (speed >= 0.5 AND speed <= 2.0),
+  model VARCHAR(20) DEFAULT 'xtts-v2',
   is_default BOOLEAN DEFAULT false,
   sample_rate INTEGER DEFAULT 22050,
   created_at TIMESTAMP DEFAULT NOW(),

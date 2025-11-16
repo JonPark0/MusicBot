@@ -11,7 +11,7 @@ import asyncio
 import time
 from pathlib import Path
 
-from models.xtts import XTTSModel
+from models.factory import TTSModelFactory
 from utils.audio_processing import AudioProcessor
 from utils.text_chunker import split_text_into_chunks, get_char_limit
 
@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize services (will be loaded in lifespan)
-tts_model = XTTSModel()
+model_factory = TTSModelFactory()
 audio_processor = AudioProcessor()
 
 
@@ -32,8 +32,28 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown events"""
     # Startup
     logger.info("Starting TTS service...")
-    tts_model.load_model()
-    logger.info("TTS service ready")
+
+    # Load models based on environment configuration
+    models_to_load = os.getenv("TTS_MODELS", "xtts-v2").split(",")
+    default_model = os.getenv("TTS_DEFAULT_MODEL", "xtts-v2")
+
+    for model_name in models_to_load:
+        model_name = model_name.strip()
+        if model_name:
+            try:
+                model_factory.load_model(model_name)
+            except Exception as e:
+                logger.error(f"Failed to load model {model_name}: {e}")
+                # Continue loading other models
+
+    # Set default model
+    if default_model in model_factory.get_loaded_models():
+        model_factory.set_default_model(default_model)
+    elif model_factory.get_loaded_models():
+        # Use first loaded model as default
+        model_factory.set_default_model(model_factory.get_loaded_models()[0])
+
+    logger.info(f"TTS service ready. Loaded models: {model_factory.get_loaded_models()}")
 
     # Start cache cleanup task
     cleanup_task = asyncio.create_task(cleanup_cache_periodically())
@@ -88,6 +108,8 @@ class SynthesizeRequest(BaseModel):
     voice_name: Optional[str] = None
     language: str = "en"
     speed: float = 1.0
+    model: Optional[str] = None  # TTS model to use (xtts-v2, chatterbox)
+    exaggeration: Optional[float] = None  # Chatterbox emotion control (0.0-1.0+)
 
 
 @app.get("/")
@@ -101,9 +123,15 @@ async def health():
     """Health check"""
     return {
         "status": "healthy",
-        "model_loaded": tts_model.is_loaded(),
+        "models": model_factory.get_all_models_info(),
         "supported_languages": SUPPORTED_LANGUAGES,
     }
+
+
+@app.get("/models")
+async def get_models():
+    """Get information about available TTS models"""
+    return model_factory.get_all_models_info()
 
 
 @app.get("/languages")
@@ -177,6 +205,7 @@ async def synthesize_speech(request: SynthesizeRequest):
     """
     Synthesize speech from text using user's voice.
     Automatically splits long text into chunks and concatenates audio.
+    Supports multiple TTS models (xtts-v2, chatterbox).
     """
     try:
         # Validate text length (increased limit since we now support chunking)
@@ -189,11 +218,28 @@ async def synthesize_speech(request: SynthesizeRequest):
         if len(request.text.strip()) == 0:
             raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-        # Validate language
-        if request.language not in SUPPORTED_LANGUAGES:
+        # Get the requested model
+        model_name = request.model or model_factory.default_model
+        if model_name not in model_factory.get_loaded_models():
             raise HTTPException(
                 status_code=400,
-                detail=f"Language '{request.language}' is not supported. Supported languages: {', '.join(SUPPORTED_LANGUAGES)}"
+                detail=f"Model '{model_name}' is not loaded. Available: {model_factory.get_loaded_models()}"
+            )
+
+        tts_model = model_factory.get_model(model_name)
+
+        # Validate language for the selected model
+        model_languages = tts_model.get_supported_languages()
+        # Map language code if needed
+        lang_to_check = request.language
+        if request.language == "zh-cn" and "zh" in model_languages:
+            lang_to_check = "zh"
+
+        if lang_to_check not in model_languages and request.language not in model_languages:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Language '{request.language}' is not supported by model '{model_name}'. "
+                       f"Supported: {', '.join(model_languages)}"
             )
 
         # Get voice file
@@ -206,10 +252,11 @@ async def synthesize_speech(request: SynthesizeRequest):
                 detail=f"Voice '{voice_name}' not found for user {request.user_id}"
             )
 
-        # Generate unique filename for final output
+        # Generate unique filename for final output (include model in hash)
         import hashlib
+        extra_params = f"{request.exaggeration}" if request.exaggeration else ""
         text_hash = hashlib.md5(
-            f"{request.user_id}{voice_name}{request.text}{request.speed}".encode()
+            f"{request.user_id}{voice_name}{request.text}{request.speed}{model_name}{extra_params}".encode()
         ).hexdigest()
         output_path = CACHE_DIR / f"{text_hash}.wav"
 
@@ -222,10 +269,15 @@ async def synthesize_speech(request: SynthesizeRequest):
                 filename="tts_output.wav"
             )
 
+        # Prepare model-specific kwargs
+        model_kwargs = {}
+        if request.exaggeration is not None:
+            model_kwargs["exaggeration"] = request.exaggeration
+
         # Split text into chunks if needed
         text_chunks = split_text_into_chunks(request.text, request.language)
 
-        logger.info(f"Synthesizing speech for user {request.user_id} ({len(text_chunks)} chunk(s))")
+        logger.info(f"Synthesizing speech for user {request.user_id} using {model_name} ({len(text_chunks)} chunk(s))")
 
         if len(text_chunks) == 1:
             # Single chunk - synthesize directly
@@ -234,7 +286,8 @@ async def synthesize_speech(request: SynthesizeRequest):
                 speaker_wav=str(voice_path),
                 language=request.language,
                 output_path=str(output_path),
-                speed=request.speed
+                speed=request.speed,
+                **model_kwargs
             )
         else:
             # Multiple chunks - synthesize each and concatenate
@@ -253,7 +306,8 @@ async def synthesize_speech(request: SynthesizeRequest):
                         speaker_wav=str(voice_path),
                         language=request.language,
                         output_path=str(chunk_path),
-                        speed=request.speed
+                        speed=request.speed,
+                        **model_kwargs
                     )
                     chunk_paths.append(str(chunk_path))
 

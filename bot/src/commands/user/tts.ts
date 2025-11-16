@@ -66,6 +66,16 @@ export class TTSCommand {
             .setMinValue(0.5)
             .setMaxValue(2.0)
         )
+        .addStringOption((option) =>
+          option
+            .setName('model')
+            .setDescription('TTS model to use')
+            .setRequired(false)
+            .addChoices(
+              { name: 'XTTS-v2 (Default)', value: 'xtts-v2' },
+              { name: 'Chatterbox (Multilingual)', value: 'chatterbox' }
+            )
+        )
     )
     .addSubcommand((subcommand) =>
       subcommand.setName('list').setDescription('List your registered voices')
@@ -98,6 +108,24 @@ export class TTSCommand {
             .setDescription('Speech speed (0.5-2.0, default: 1.0)')
             .setRequired(false)
             .setMinValue(0.5)
+            .setMaxValue(2.0)
+        )
+        .addStringOption((option) =>
+          option
+            .setName('model')
+            .setDescription('TTS model to use')
+            .setRequired(false)
+            .addChoices(
+              { name: 'XTTS-v2 (Default)', value: 'xtts-v2' },
+              { name: 'Chatterbox (Multilingual)', value: 'chatterbox' }
+            )
+        )
+        .addNumberOption((option) =>
+          option
+            .setName('exaggeration')
+            .setDescription('Emotion intensity for Chatterbox (0.0-1.0, default: 0.5)')
+            .setRequired(false)
+            .setMinValue(0.0)
             .setMaxValue(2.0)
         )
     )
@@ -200,6 +228,7 @@ export class TTSCommand {
   private async handleSelect(interaction: ChatInputCommandInteraction) {
     const voiceName = interaction.options.get('voice-name')?.value as string;
     const speed = (interaction.options.get('speed')?.value as number) || 1.0;
+    const model = (interaction.options.get('model')?.value as string) || 'xtts-v2';
 
     try {
       // Check if voice exists
@@ -218,21 +247,21 @@ export class TTSCommand {
         return;
       }
 
-      // Set as default and update speed
+      // Set as default and update speed and model
       await db.query('UPDATE user_voices SET is_default = false WHERE user_id = $1', [
         interaction.user.id,
       ]);
 
       await db.query(
-        'UPDATE user_voices SET is_default = true, speed = $3 WHERE user_id = $1 AND voice_name = $2',
-        [interaction.user.id, voiceName, speed]
+        'UPDATE user_voices SET is_default = true, speed = $3, model = $4 WHERE user_id = $1 AND voice_name = $2',
+        [interaction.user.id, voiceName, speed, model]
       );
 
       await interaction.reply({
         embeds: [
           EmbedFactory.success(
             'Voice Selected',
-            `Now using voice: "${voiceName}"\nSpeed: ${speed}x`
+            `Now using voice: "${voiceName}"\nSpeed: ${speed}x\nModel: ${model}`
           ),
         ],
         ephemeral: true,
@@ -331,6 +360,8 @@ export class TTSCommand {
     const voiceName = interaction.options.get('voice-name')?.value as string;
     const text = interaction.options.get('text')?.value as string;
     const speed = (interaction.options.get('speed')?.value as number) || 1.0;
+    const model = interaction.options.get('model')?.value as string | undefined;
+    const exaggeration = interaction.options.get('exaggeration')?.value as number | undefined;
 
     try {
       // Get voice language from database
@@ -348,25 +379,31 @@ export class TTSCommand {
 
       const language = dbResult.rows[0].language || 'en';
 
-      // Synthesize speech with speed
+      // Synthesize speech with speed, model, and exaggeration
       const audioBuffer = await ttsClient.synthesize(
         interaction.user.id,
         text,
         voiceName,
         language,
-        speed
+        speed,
+        model,
+        exaggeration
       );
 
       // Send as attachment
       const attachment = new AttachmentBuilder(audioBuffer, { name: 'preview.wav' });
 
+      let description = `Voice: ${voiceName}\nSpeed: ${speed}x`;
+      if (model) {
+        description += `\nModel: ${model}`;
+      }
+      if (exaggeration !== undefined) {
+        description += `\nEmotion: ${exaggeration}`;
+      }
+      description += `\nText: "${text}"`;
+
       await interaction.editReply({
-        embeds: [
-          EmbedFactory.success(
-            'Preview Generated',
-            `Voice: ${voiceName}\nSpeed: ${speed}x\nText: "${text}"`
-          ),
-        ],
+        embeds: [EmbedFactory.success('Preview Generated', description)],
         files: [attachment],
       });
     } catch (error: any) {

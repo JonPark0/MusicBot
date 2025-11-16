@@ -37,3 +37,7 @@ spacy==3.8.4
 aiofiles==24.1.0
 asyncpg==0.30.0
 redis==5.2.1
+
+# Additional TTS models
+# Chatterbox (ResembleAI) - optional, enable via TTS_MODELS env var
+chatterbox-tts==0.1.4

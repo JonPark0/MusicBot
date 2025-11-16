@@ -11,6 +11,27 @@ export interface Voice {
   file_path: string;
 }
 
+export interface TTSModelInfo {
+  name: string;
+  loaded: boolean;
+  supported_languages: string[];
+}
+
+export interface TTSModelsResponse {
+  available: string[];
+  loaded: string[];
+  default: string;
+  models: Record<string, TTSModelInfo>;
+}
+
+export interface SynthesizeOptions {
+  voiceName?: string;
+  language?: string;
+  speed?: number;
+  model?: string;
+  exaggeration?: number;
+}
+
 export class TTSClient {
   private client: AxiosInstance;
   private baseUrl: string;
@@ -63,24 +84,37 @@ export class TTSClient {
     text: string,
     voiceName?: string,
     language: string = 'en',
-    speed: number = 1.0
+    speed: number = 1.0,
+    model?: string,
+    exaggeration?: number
   ): Promise<Buffer> {
     try {
-      const response = await this.client.post(
-        '/synthesize',
-        {
-          user_id: userId,
-          text: text,
-          voice_name: voiceName,
-          language: language,
-          speed: speed,
-        },
-        {
-          responseType: 'arraybuffer',
-        }
-      );
+      const requestBody: any = {
+        user_id: userId,
+        text: text,
+        voice_name: voiceName,
+        language: language,
+        speed: speed,
+      };
 
-      logger.info('Speech synthesized successfully', { userId, textLength: text.length });
+      // Add optional model-specific parameters
+      if (model) {
+        requestBody.model = model;
+      }
+      if (exaggeration !== undefined) {
+        requestBody.exaggeration = exaggeration;
+      }
+
+      const response = await this.client.post('/synthesize', requestBody, {
+        responseType: 'arraybuffer',
+        timeout: 120000, // Increase timeout for longer texts
+      });
+
+      logger.info('Speech synthesized successfully', {
+        userId,
+        textLength: text.length,
+        model: model || 'default',
+      });
       return Buffer.from(response.data);
     } catch (error: any) {
       logger.error('Failed to synthesize speech', {
@@ -88,6 +122,19 @@ export class TTSClient {
         userId,
       });
       throw new Error(error.response?.data?.detail || 'Failed to synthesize speech');
+    }
+  }
+
+  /**
+   * Get available TTS models
+   */
+  async getModels(): Promise<TTSModelsResponse> {
+    try {
+      const response = await this.client.get('/models');
+      return response.data;
+    } catch (error: any) {
+      logger.error('Failed to get TTS models', { error: error.message });
+      throw new Error('Failed to get TTS models');
     }
   }
 

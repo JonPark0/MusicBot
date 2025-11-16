@@ -2,15 +2,16 @@ import torch
 from TTS.api import TTS
 import logging
 from pathlib import Path
+from .base import BaseTTSModel
 
 logger = logging.getLogger(__name__)
 
 
-class XTTSModel:
+class XTTSModel(BaseTTSModel):
     def __init__(self):
         self.model = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        logger.info(f"Using device: {self.device}")
+        logger.info(f"XTTS using device: {self.device}")
 
     def load_model(self):
         """Load XTTS-v2 model"""
@@ -34,7 +35,8 @@ class XTTSModel:
         speaker_wav: str,
         language: str = "en",
         output_path: str = "output.wav",
-        speed: float = 1.0
+        speed: float = 1.0,
+        **kwargs
     ):
         """
         Synthesize speech from text using a speaker reference
@@ -77,3 +79,8 @@ class XTTSModel:
             "en", "es", "fr", "de", "it", "pt", "pl",
             "tr", "ru", "nl", "cs", "ar", "zh-cn", "ja", "ko", "hu"
         ]
+
+    def get_model_name(self) -> str:
+        """Get the model's identifier name"""
+        return "xtts-v2"
+
