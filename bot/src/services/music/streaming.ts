@@ -1,5 +1,5 @@
 import { Player, SearchResult, Track as DPTrack, QueryType } from 'discord-player';
-import { DefaultExtractors } from '@discord-player/extractor';
+import { YoutubeiExtractor } from 'discord-player-youtubei';
 import { Client } from 'discord.js';
 import { logger } from '../../utils/logger';
 import { config } from '../../config/constants';
@@ -27,8 +27,14 @@ export class MusicStreamingService {
 
   private async initializePlayer() {
     try {
-      // Load default extractors (YouTube, Spotify, SoundCloud, etc.)
-      await this.player.extractors.loadMulti(DefaultExtractors);
+      // Load YoutubeiExtractor for YouTube, Spotify, SoundCloud support
+      // This is the recommended extractor for discord-player v7
+      await this.player.extractors.register(YoutubeiExtractor, {
+        // Enable streaming for better performance
+        streamOptions: {
+          useClient: 'ANDROID',
+        },
+      });
 
       logger.info('Discord-player extractors loaded successfully');
 
