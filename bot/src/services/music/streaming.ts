@@ -29,14 +29,23 @@ export class MusicStreamingService {
     try {
       // Load YoutubeiExtractor for YouTube, Spotify, SoundCloud support
       // This is the recommended extractor for discord-player v7
-      await this.player.extractors.register(YoutubeiExtractor, {
+      const extractorOptions: Record<string, unknown> = {
         // Use IOS client which doesn't require signature deciphering
         streamOptions: {
           useClient: 'IOS',
         },
         // Disable JavaScript player to avoid signature decipher issues
         disablePlayer: true,
-      });
+      };
+
+      // Add YouTube cookie authentication if provided
+      const youtubeCookie = process.env.YOUTUBE_COOKIE;
+      if (youtubeCookie) {
+        extractorOptions.cookie = youtubeCookie;
+        logger.info('YouTube cookie authentication enabled');
+      }
+
+      await this.player.extractors.register(YoutubeiExtractor, extractorOptions);
 
       logger.info('Discord-player extractors loaded successfully');
 

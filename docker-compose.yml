@@ -17,6 +17,7 @@ services:
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
+      - YOUTUBE_COOKIE=${YOUTUBE_COOKIE:-}
     depends_on:
       postgres:
         condition: service_healthy
