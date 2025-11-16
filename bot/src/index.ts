@@ -75,7 +75,7 @@ class DiscordBot {
   }
 
   private registerEventHandlers() {
-    this.client.once('clientReady', async () => {
+    this.client.once('ready', async () => {
       logger.info(`Bot logged in as ${this.client.user?.tag}`);
       logger.info(`Serving ${this.client.guilds.cache.size} guilds`);
 
