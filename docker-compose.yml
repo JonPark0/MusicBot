@@ -30,8 +30,9 @@ services:
     volumes:
       - ./data/audio:/app/audio
       - ./logs/bot:/app/logs
+    # Health check uses process monitoring instead of HTTP (bot has no HTTP server)
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      test: ["CMD-SHELL", "pgrep -f 'node dist/index.js' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -76,7 +77,7 @@ services:
 
   # LibreTranslate (Failsafe Translation)
   libretranslate:
-    image: libretranslate/libretranslate:latest
+    image: libretranslate/libretranslate:v1.6.3
     container_name: libretranslate
     restart: unless-stopped
     environment:
@@ -98,7 +99,7 @@ services:
 
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: discord-postgres
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
@@ -123,13 +124,13 @@ services:
     image: redis:7-alpine
     container_name: discord-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
       - redis-data:/data
     expose:
       - "6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5

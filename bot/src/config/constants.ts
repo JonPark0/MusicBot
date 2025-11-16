@@ -16,14 +16,14 @@ export const config = {
 
   // Redis
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    url: process.env.REDIS_URL || 'redis://redis:6379',
   },
 
   // External Services
   services: {
     geminiApiKey: process.env.GEMINI_API_KEY || '',
-    libreTranslateUrl: process.env.LIBRETRANSLATE_URL || 'http://localhost:5000',
-    ttsServiceUrl: process.env.TTS_SERVICE_URL || 'http://localhost:8000',
+    libreTranslateUrl: process.env.LIBRETRANSLATE_URL || 'http://libretranslate:5000',
+    ttsServiceUrl: process.env.TTS_SERVICE_URL || 'http://tts-service:8000',
   },
 
   // Spotify (for music)

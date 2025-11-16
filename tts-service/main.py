@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
+from contextlib import asynccontextmanager
 import uvicorn
 import os
 import logging
@@ -20,8 +21,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Initialize services (will be loaded in lifespan)
+tts_model = XTTSModel()
+audio_processor = AudioProcessor()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown events"""
+    # Startup
+    logger.info("Starting TTS service...")
+    tts_model.load_model()
+    logger.info("TTS service ready")
+
+    # Start cache cleanup task
+    cleanup_task = asyncio.create_task(cleanup_cache_periodically())
+
+    yield
+
+    # Shutdown
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
+    logger.info("TTS service shutdown complete")
+
+
 # Initialize FastAPI app
-app = FastAPI(title="TTS Service", version="1.0.0")
+app = FastAPI(title="TTS Service", version="2.0.0", lifespan=lifespan)
 
 # CORS middleware - restrict to internal network only
 app.add_middleware(
@@ -31,10 +59,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
-
-# Initialize services
-tts_model = XTTSModel()
-audio_processor = AudioProcessor()
 
 # Directories
 VOICES_DIR = Path("/app/voices")
@@ -49,18 +73,6 @@ class SynthesizeRequest(BaseModel):
     voice_name: Optional[str] = None
     language: str = "en"
     speed: float = 1.0
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Load XTTS model on startup and start cache cleanup"""
-    logger.info("Starting TTS service...")
-    tts_model.load_model()
-    logger.info("TTS service ready")
-
-    # Start cache cleanup task
-    import asyncio
-    asyncio.create_task(cleanup_cache_periodically())
 
 
 @app.get("/")
