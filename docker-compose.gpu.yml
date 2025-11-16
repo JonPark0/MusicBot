@@ -1,5 +1,3 @@
-version: '3.8'
-
 # GPU-enabled override for TTS service
 # Usage: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 #
