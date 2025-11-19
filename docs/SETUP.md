@@ -24,7 +24,8 @@ Complete guide to setting up the Discord Multi-Function Bot.
 
 ### Optional
 
-- **NVIDIA GPU** with CUDA support (for faster TTS - automatically detected)
+- **NVIDIA GPU** with CUDA support (for 2-3x faster TTS - automatically detected)
+- **AMD GPU** with ROCm 6.0+ support (for 2-3x faster TTS - requires manual setup)
 - **Spotify Client ID & Secret** (optional - bot works without it, converts Spotify links to YouTube)
 - **YouTube API Key** (optional - bot works without it using scraping)
 
@@ -206,6 +207,14 @@ Check your Discord server - the bot should appear online.
 
 ## GPU Support (Optional)
 
+The TTS service supports both **NVIDIA** and **AMD** GPUs for 2-3x faster performance compared to CPU.
+
+**Performance comparison:**
+- CPU: 2-5 seconds per synthesis
+- GPU (NVIDIA/AMD): 1-2 seconds per synthesis
+
+### NVIDIA GPU (CUDA) - Recommended
+
 The TTS service **automatically detects** NVIDIA GPUs if available. The code checks for CUDA support at runtime:
 
 ```python
@@ -214,14 +223,14 @@ self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
 However, Docker needs to be configured to pass the GPU to the container.
 
-### Method 1: Using GPU Override File (Recommended)
+#### Method 1: Using GPU Override File (Recommended)
 
 ```bash
-# Start with GPU support
+# Start with NVIDIA GPU support
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
 
-### Method 2: Manual Configuration
+#### Method 2: Manual Configuration
 
 #### 1. Install NVIDIA Container Toolkit
 
@@ -284,12 +293,129 @@ tts-service:
   #   context: ./tts-service
 ```
 
-### Verifying GPU Usage
+### AMD GPU (ROCm)
 
-Check if GPU is being used:
+AMD GPU support requires additional setup steps compared to NVIDIA.
+
+**Requirements:**
+- AMD GPU compatible with ROCm 6.0+ ([compatibility list](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html))
+- Compatible GPUs: RX 6000/7000 series, Radeon Pro, Instinct MI series
+- ROCm 6.0 or higher installed on host
+
+#### 1. Install ROCm on Host
+
+For Ubuntu 22.04:
 
 ```bash
+# Download and install ROCm
+sudo apt-get update
+wget https://repo.radeon.com/amdgpu-install/6.0/ubuntu/jammy/amdgpu-install_6.0.60000-1_all.deb
+sudo apt-get install ./amdgpu-install_6.0.60000-1_all.deb
+sudo amdgpu-install -y --usecase=rocm
+
+# Add user to required groups
+sudo usermod -a -G render,video $USER
+newgrp render
+
+# Verify ROCm installation
+rocm-smi
+```
+
+#### 2. Configure Docker for ROCm
+
+Edit or create `/etc/docker/daemon.json`:
+
+```json
+{
+  "runtimes": {
+    "rocm": {
+      "path": "/usr/bin/rocm-runtime",
+      "runtimeArgs": []
+    }
+  }
+}
+```
+
+Restart Docker:
+
+```bash
+sudo systemctl restart docker
+```
+
+#### 3. Create ROCm Docker Compose Override
+
+Create `docker-compose.rocm.yml`:
+
+```yaml
+services:
+  tts-service:
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    environment:
+      - ROCM_VISIBLE_DEVICES=0  # GPU ID to use
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0  # Set for your GPU
+```
+
+**Note:** `HSA_OVERRIDE_GFX_VERSION` varies by GPU model:
+- RX 6000 series: `10.3.0`
+- RX 7000 series: `11.0.0`
+- Check your GPU's version with `rocminfo | grep gfx`
+
+#### 4. Build ROCm-Compatible TTS Image (Optional)
+
+For optimal ROCm performance, create `tts-service/Dockerfile.rocm`:
+
+```dockerfile
+FROM rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.1
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application
+COPY . .
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Build and use the ROCm image:
+
+```bash
+cd tts-service
+docker build -f Dockerfile.rocm -t tts-service:rocm .
+```
+
+Update `docker-compose.rocm.yml`:
+
+```yaml
+services:
+  tts-service:
+    image: tts-service:rocm
+    # ... rest of ROCm configuration
+```
+
+#### 5. Start with ROCm Support
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.rocm.yml up -d
+```
+
+### Verifying GPU Usage
+
+**For NVIDIA:**
+
+```bash
+# Check logs
 docker-compose logs tts-service | grep -i "device\|cuda"
+
+# Monitor GPU
+watch -n 1 nvidia-smi
 ```
 
 You should see: `Using device: cuda`
@@ -298,6 +424,25 @@ If you see `Using device: cpu`, verify:
 1. NVIDIA drivers are installed on host
 2. nvidia-docker2 is installed
 3. GPU settings are uncommented in docker-compose.yml
+
+**For AMD:**
+
+```bash
+# Check logs
+docker-compose logs tts-service | grep -i "device\|rocm\|hip"
+
+# Monitor GPU
+watch -n 1 rocm-smi
+```
+
+You should see: `Using device: cuda` (PyTorch uses CUDA API for ROCm)
+
+If GPU is not detected:
+1. Verify ROCm installation: `rocm-smi`
+2. Check user groups: `groups` should include `render` and `video`
+3. Verify devices are accessible: `ls -l /dev/kfd /dev/dri`
+4. Check Docker daemon.json configuration
+5. Verify `HSA_OVERRIDE_GFX_VERSION` matches your GPU
 
 ## Configuration
 

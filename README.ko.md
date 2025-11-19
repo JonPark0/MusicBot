@@ -50,12 +50,12 @@ Docker Compose 스택
 ## 기술 스택
 
 - **Discord Bot**: Node.js 22, TypeScript 5.9, discord.js v14.24
-- **TTS 서비스**: Python 3.11, FastAPI 0.115, Coqui XTTS-v2, PyTorch 2.5, CUDA 12.4
+- **TTS 서비스**: Python 3.11, FastAPI 0.115, Coqui XTTS-v2, PyTorch 2.5, CUDA 12.4 / ROCm 6.0+
 - **번역**: Google Gemini 2.0 Flash, LibreTranslate (선택)
 - **음악**: discord-player v7.1, FFmpeg, @discordjs/voice 0.19
 - **데이터베이스**: PostgreSQL 17
 - **캐시**: Redis 7
-- **배포**: Docker, Docker Compose, NVIDIA Container Toolkit (GPU용)
+- **배포**: Docker, Docker Compose, NVIDIA Container Toolkit (NVIDIA GPU용), ROCm (AMD GPU용)
 
 ## 요구 사항
 
@@ -63,7 +63,7 @@ Docker Compose 스택
 - Discord Bot 토큰 ([여기서 생성](https://discord.com/developers/applications))
 - Google Gemini API Key ([여기서 발급](https://aistudio.google.com/app/apikey))
 - (선택) Spotify 지원을 위한 Client ID & Secret
-- (선택) 더 빠른 TTS를 위한 NVIDIA GPU
+- (선택) 더 빠른 TTS를 위한 NVIDIA GPU 또는 AMD GPU
 - 최소 8GB RAM (TTS 사용 시 16GB 권장)
 - 10GB 여유 디스크 공간
 
@@ -93,26 +93,52 @@ docker compose up -d
 docker compose exec discord-bot npm run deploy-commands
 ```
 
-### GPU/CUDA 설정 (TTS 성능 향상)
+### GPU 설정 (TTS 성능 향상 - 2-3배 빠름)
+
+#### NVIDIA GPU (CUDA)
 
 **NVIDIA GPU** 사용자를 위한 CUDA 지원:
 
 ```bash
 # 1-4. 위와 동일 (클론, 환경 설정, 구성)
 
-# 5. GPU 지원으로 시작
+# 5. NVIDIA GPU 지원으로 시작
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 # 6. 슬래시 명령어 배포
 docker compose exec discord-bot npm run deploy-commands
 ```
 
-**GPU 요구사항:**
+**요구사항:**
 - CUDA 지원 NVIDIA GPU
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) 설치
 - NVIDIA 드라이버 버전 525.60.13 이상
 
-GPU는 CPU 대비 **2-3배 빠른** TTS 합성을 제공합니다.
+#### AMD GPU (ROCm)
+
+**AMD GPU** 사용자를 위한 ROCm 6.0+ 지원:
+
+```bash
+# 1-4. 위와 동일 (클론, 환경 설정, 구성)
+
+# 5. 호스트에 ROCm 설치 (Ubuntu 22.04)
+wget https://repo.radeon.com/amdgpu-install/6.0/ubuntu/jammy/amdgpu-install_6.0.60000-1_all.deb
+sudo apt-get install ./amdgpu-install_6.0.60000-1_all.deb
+sudo amdgpu-install -y --usecase=rocm
+
+# 6. AMD GPU 지원으로 시작
+docker compose -f docker-compose.yml -f docker-compose.rocm.yml up -d
+
+# 7. 슬래시 명령어 배포
+docker compose exec discord-bot npm run deploy-commands
+```
+
+**요구사항:**
+- ROCm 6.0+ 호환 AMD GPU ([호환성 목록](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html))
+- ROCm 6.0 이상 설치
+- 호환 GPU: RX 6000/7000 시리즈, Radeon Pro, Instinct MI 시리즈
+
+**성능:** GPU (NVIDIA/AMD)는 CPU 대비 **2-3배 빠른** TTS 합성을 제공합니다 (합성당 1-2초 vs 2-5초).
 
 ## 설정
 
@@ -162,7 +188,7 @@ SPOTIFY_CLIENT_SECRET=스포티파이_시크릿
 ## 성능
 
 - 번역: 메시지당 약 1-2초 (Gemini) 또는 0.5초 (캐시됨)
-- TTS: 음성 생성 약 2-5초 (CPU), **약 1-2초 (GPU/CUDA)**
+- TTS: 음성 생성 약 2-5초 (CPU), **약 1-2초 (GPU/CUDA/ROCm)**
 - 음악: 스트리밍을 통한 즉시 재생
 - 리소스 사용량:
   - 봇: 약 200MB RAM

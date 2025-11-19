@@ -50,12 +50,12 @@ Docker Compose Stack
 ## Tech Stack
 
 - **Discord Bot**: Node.js 22, TypeScript 5.9, discord.js v14.24
-- **TTS Service**: Python 3.11, FastAPI 0.115, Coqui XTTS-v2, PyTorch 2.5, CUDA 12.4
+- **TTS Service**: Python 3.11, FastAPI 0.115, Coqui XTTS-v2, PyTorch 2.5, CUDA 12.4 / ROCm 6.0+
 - **Translation**: Google Gemini 2.0 Flash, LibreTranslate (optional)
 - **Music**: discord-player v7.1, FFmpeg, @discordjs/voice 0.19
 - **Database**: PostgreSQL 17
 - **Cache**: Redis 7
-- **Deployment**: Docker, Docker Compose, NVIDIA Container Toolkit (for GPU)
+- **Deployment**: Docker, Docker Compose, NVIDIA Container Toolkit (for NVIDIA GPU), ROCm (for AMD GPU)
 
 ## Prerequisites
 
@@ -63,7 +63,7 @@ Docker Compose Stack
 - Discord Bot Token ([Create here](https://discord.com/developers/applications))
 - Google Gemini API Key ([Get here](https://aistudio.google.com/app/apikey))
 - (Optional) Spotify Client ID & Secret for Spotify support
-- (Optional) NVIDIA GPU for faster TTS processing
+- (Optional) NVIDIA GPU or AMD GPU for faster TTS processing
 - At least 8GB RAM (16GB recommended for TTS)
 - 10GB free disk space
 
@@ -162,7 +162,7 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 ## Performance
 
 - Translation: ~1-2 seconds per message (Gemini) or ~0.5s (cached)
-- TTS: ~2-5 seconds to generate speech (CPU), **~1-2s (GPU/CUDA)**
+- TTS: ~2-5 seconds to generate speech (CPU), **~1-2s (GPU/CUDA/ROCm)**
 - Music: Near-instant playback with streaming
 - Resource Usage:
   - Bot: ~200MB RAM

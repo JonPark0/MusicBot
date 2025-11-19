@@ -24,7 +24,8 @@ Discord 다기능 봇 설치를 위한 완벽한 가이드입니다.
 
 ### 선택
 
-- **NVIDIA GPU** CUDA 지원 (더 빠른 TTS를 위함 - 자동 감지)
+- **NVIDIA GPU** CUDA 지원 (2-3배 빠른 TTS - 자동 감지)
+- **AMD GPU** ROCm 6.0+ 지원 (2-3배 빠른 TTS - 수동 설정 필요)
 - **Spotify Client ID & Secret** (선택 - 없어도 작동, Spotify 링크를 YouTube로 자동 변환)
 - **YouTube API Key** (선택 - 없어도 스크래핑으로 작동)
 
@@ -207,6 +208,14 @@ Discord 서버에서 봇이 온라인 상태인지 확인하세요.
 
 ## GPU 지원 (선택)
 
+TTS 서비스는 **NVIDIA**와 **AMD** GPU를 모두 지원하여 CPU 대비 2-3배 빠른 성능을 제공합니다.
+
+**성능 비교:**
+- CPU: 합성당 2-5초
+- GPU (NVIDIA/AMD): 합성당 1-2초
+
+### NVIDIA GPU (CUDA) - 권장
+
 TTS 서비스는 NVIDIA GPU를 **자동으로 감지**합니다. 코드는 런타임에 CUDA 지원 여부를 확인합니다:
 
 ```python
@@ -215,14 +224,14 @@ self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
 그러나 Docker가 GPU를 컨테이너에 전달하도록 설정해야 합니다.
 
-### 방법 1: GPU Override 파일 사용 (권장)
+#### 방법 1: GPU Override 파일 사용 (권장)
 
 ```bash
-# GPU 지원으로 시작
+# NVIDIA GPU 지원으로 시작
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 ```
 
-### 방법 2: 수동 설정
+#### 방법 2: 수동 설정
 
 #### 1. NVIDIA Container Toolkit 설치
 
@@ -285,12 +294,129 @@ tts-service:
   #   context: ./tts-service
 ```
 
-### GPU 사용 확인
+### AMD GPU (ROCm)
 
-GPU가 사용되고 있는지 확인:
+AMD GPU 지원은 NVIDIA에 비해 추가 설정 단계가 필요합니다.
+
+**요구사항:**
+- ROCm 6.0+ 호환 AMD GPU ([호환성 목록](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html))
+- 호환 GPU: RX 6000/7000 시리즈, Radeon Pro, Instinct MI 시리즈
+- 호스트에 ROCm 6.0 이상 설치
+
+#### 1. 호스트에 ROCm 설치
+
+Ubuntu 22.04 기준:
 
 ```bash
+# ROCm 다운로드 및 설치
+sudo apt-get update
+wget https://repo.radeon.com/amdgpu-install/6.0/ubuntu/jammy/amdgpu-install_6.0.60000-1_all.deb
+sudo apt-get install ./amdgpu-install_6.0.60000-1_all.deb
+sudo amdgpu-install -y --usecase=rocm
+
+# 필요한 그룹에 사용자 추가
+sudo usermod -a -G render,video $USER
+newgrp render
+
+# ROCm 설치 확인
+rocm-smi
+```
+
+#### 2. ROCm용 Docker 설정
+
+`/etc/docker/daemon.json` 편집 또는 생성:
+
+```json
+{
+  "runtimes": {
+    "rocm": {
+      "path": "/usr/bin/rocm-runtime",
+      "runtimeArgs": []
+    }
+  }
+}
+```
+
+Docker 재시작:
+
+```bash
+sudo systemctl restart docker
+```
+
+#### 3. ROCm Docker Compose Override 생성
+
+`docker-compose.rocm.yml` 생성:
+
+```yaml
+services:
+  tts-service:
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - video
+      - render
+    environment:
+      - ROCM_VISIBLE_DEVICES=0  # 사용할 GPU ID
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0  # GPU에 맞게 설정
+```
+
+**참고:** `HSA_OVERRIDE_GFX_VERSION`은 GPU 모델에 따라 다릅니다:
+- RX 6000 시리즈: `10.3.0`
+- RX 7000 시리즈: `11.0.0`
+- GPU 버전 확인: `rocminfo | grep gfx`
+
+#### 4. ROCm 호환 TTS 이미지 빌드 (선택)
+
+최적의 ROCm 성능을 위해 `tts-service/Dockerfile.rocm` 생성:
+
+```dockerfile
+FROM rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.1
+
+WORKDIR /app
+
+# 의존성 설치
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# 애플리케이션 복사
+COPY . .
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+ROCm 이미지 빌드 및 사용:
+
+```bash
+cd tts-service
+docker build -f Dockerfile.rocm -t tts-service:rocm .
+```
+
+`docker-compose.rocm.yml` 업데이트:
+
+```yaml
+services:
+  tts-service:
+    image: tts-service:rocm
+    # ... ROCm 설정의 나머지 부분
+```
+
+#### 5. ROCm 지원으로 시작
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.rocm.yml up -d
+```
+
+### GPU 사용 확인
+
+**NVIDIA의 경우:**
+
+```bash
+# 로그 확인
 docker-compose logs tts-service | grep -i "device\|cuda"
+
+# GPU 모니터링
+watch -n 1 nvidia-smi
 ```
 
 `Using device: cuda`가 표시되어야 합니다.
@@ -299,6 +425,25 @@ docker-compose logs tts-service | grep -i "device\|cuda"
 1. 호스트에 NVIDIA 드라이버가 설치되어 있는지
 2. nvidia-docker2가 설치되어 있는지
 3. docker-compose.yml에서 GPU 설정이 주석 해제되었는지
+
+**AMD의 경우:**
+
+```bash
+# 로그 확인
+docker-compose logs tts-service | grep -i "device\|rocm\|hip"
+
+# GPU 모니터링
+watch -n 1 rocm-smi
+```
+
+`Using device: cuda`가 표시되어야 합니다 (PyTorch는 ROCm에 CUDA API를 사용).
+
+GPU가 감지되지 않으면:
+1. ROCm 설치 확인: `rocm-smi`
+2. 사용자 그룹 확인: `groups` 명령 시 `render`와 `video` 포함되어야 함
+3. 디바이스 접근 가능 확인: `ls -l /dev/kfd /dev/dri`
+4. Docker daemon.json 설정 확인
+5. `HSA_OVERRIDE_GFX_VERSION`이 GPU와 일치하는지 확인
 
 ## 채널 설정
 
