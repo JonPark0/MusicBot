@@ -1,9 +1,10 @@
 # ROCm-enabled Dockerfile for AMD GPU support
 # Build with: docker build -f Dockerfile.rocm -t tts-service:rocm .
 #
-# Latest ROCm 7.1 with PyTorch 2.8.0 and Ubuntu 22.04
+# ROCm 6.2.4 with PyTorch 2.4.1 and Ubuntu 22.04
+# Compatible with host ROCm 6.4.2
 
-FROM rocm/pytorch:rocm7.1_ubuntu22.04_py3.10_pytorch_release_2.8.0
+FROM rocm/pytorch:rocm6.2.4_ubuntu22.04_py3.10_pytorch_2.4.1
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
