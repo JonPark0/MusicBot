@@ -21,11 +21,12 @@ RUN python -m pip install --upgrade pip
 WORKDIR /app
 
 # Copy requirements
-COPY requirements-gpu.txt .
+COPY requirements-rocm.txt .
 
 # Install Python dependencies
 # PyTorch with ROCm support is already included in base image
-RUN pip install --no-cache-dir -r requirements-gpu.txt
+# Do NOT install torch/torchaudio from requirements to avoid overwriting ROCm version
+RUN pip install --no-cache-dir -r requirements-rocm.txt
 
 # Accept Coqui TTS license agreement for XTTS-v2 model
 ENV COQUI_TOS_AGREED=1
