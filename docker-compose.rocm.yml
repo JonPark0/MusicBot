@@ -29,7 +29,13 @@ services:
       context: ./tts-service
       dockerfile: Dockerfile.rocm
       args:
-        - GPU_ARCH=${GPU_ARCH:-gfx1030}
+        - GPU_ARCH=${GPU_ARCH:-gfx1035}
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
     devices:
       # KFD (Kernel Fusion Driver) for compute operations
       - /dev/kfd
@@ -44,8 +50,10 @@ services:
     environment:
       # Specify which GPU to use (0 for first GPU, 1 for second, etc.)
       - ROCM_VISIBLE_DEVICES=0
-      # Override GFX version if needed (set according to your GPU model)
-      # Uncomment and modify for your specific GPU:
-      # - HSA_OVERRIDE_GFX_VERSION=10.3.0
-      # ROCm runtime will use CUDA API compatibility layer
+      # Override GFX version for RX 6000 series (RDNA 2)
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+      # ROCm runtime settings
       - HSA_ENABLE_SDMA=0
+      # Disable some problematic features that can cause segfaults
+      - HSA_ENABLE_INTERRUPT=0
+      - GPU_MAX_HW_QUEUES=4
