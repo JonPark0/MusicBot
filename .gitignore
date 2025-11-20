@@ -56,3 +56,6 @@ data/libretranslate/*
 # Database
 *.db
 *.sqlite
+
+# Custom Folder
+saori-revive
