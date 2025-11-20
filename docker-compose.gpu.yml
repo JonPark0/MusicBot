@@ -8,6 +8,9 @@
 
 services:
   tts-service:
+    build:
+      context: ./tts-service
+      dockerfile: Dockerfile.gpu
     deploy:
       resources:
         reservations:

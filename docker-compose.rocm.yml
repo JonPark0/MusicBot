@@ -22,6 +22,11 @@
 
 services:
   tts-service:
+    build:
+      context: ./tts-service
+      dockerfile: Dockerfile.rocm
+      args:
+        - GPU_ARCH=${GPU_ARCH:-gfx1030}
     devices:
       # KFD (Kernel Fusion Driver) for compute operations
       - /dev/kfd

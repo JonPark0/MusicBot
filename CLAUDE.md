@@ -65,14 +65,15 @@ All services communicate via internal Docker network. No ports exposed to host b
 ### Docker Compose Workflow
 
 ```bash
-# Standard CPU deployment
+# Standard CPU deployment (uses Dockerfile by default)
 docker compose up -d
 
-# NVIDIA GPU/CUDA deployment (2-3x faster TTS)
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# NVIDIA GPU/CUDA deployment (uses Dockerfile.gpu, 2-3x faster TTS)
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 
-# AMD GPU/ROCm deployment (2-3x faster TTS)
-docker compose -f docker-compose.yml -f docker-compose.rocm.yml up -d
+# AMD GPU/ROCm deployment (uses Dockerfile.rocm, 2-3x faster TTS)
+# Note: Set GPU_ARCH in .env before building (e.g., gfx1030 for RX 6000, gfx1100 for RX 7000)
+docker compose -f docker-compose.yml -f docker-compose.rocm.yml up -d --build
 
 # Enable LibreTranslate failover (optional)
 docker compose --profile libretranslate up -d
@@ -204,7 +205,13 @@ docker compose logs -f lavalink
    - `YOUTUBE_COOKIE` - For bypassing bot detection
    - `LIBRETRANSLATE_URL` - Enable translation failover
 
-3. **Service URLs** (Docker internal by default):
+3. **Optional GPU Configuration** (AMD ROCm only):
+   - `GPU_ARCH` - AMD GPU architecture target (e.g., `gfx1030`, `gfx1100`)
+   - Only used when running with `docker-compose.rocm.yml`
+   - Default: `gfx1030` (RX 6000 series)
+   - Find your GPU: `rocminfo | grep gfx`
+
+4. **Service URLs** (Docker internal by default):
    - `DATABASE_URL` - PostgreSQL connection string
    - `REDIS_URL` - Redis connection string
    - `TTS_SERVICE_URL` - TTS service endpoint
@@ -409,7 +416,7 @@ docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 **Requirements:**
 - AMD GPU compatible with ROCm 6.0+ ([compatibility list](https://rocm.docs.amd.com/en/latest/release/gpu_os_support.html))
-- ROCm 6.0 or higher installed
+- ROCm 6.0 or higher installed (ROCm 7.1 recommended)
 - Compatible AMD GPUs: RX 6000/7000 series, Radeon Pro, Instinct MI series
 
 **Installation Steps:**
@@ -425,60 +432,33 @@ sudo amdgpu-install -y --usecase=rocm
 sudo usermod -a -G render,video $USER
 newgrp render
 
-# 3. Verify ROCm installation
+# 3. Verify ROCm installation and check GPU architecture
 rocm-smi
+rocminfo | grep gfx  # Note your GPU's gfx version (e.g., gfx1030, gfx1100)
 
-# 4. Configure Docker for ROCm
-# Add to /etc/docker/daemon.json:
-{
-  "runtimes": {
-    "rocm": {
-      "path": "/usr/bin/rocm-runtime",
-      "runtimeArgs": []
-    }
-  }
-}
-sudo systemctl restart docker
+# 4. Configure GPU architecture in .env
+# Edit .env and set GPU_ARCH to match your GPU:
+GPU_ARCH=gfx1030  # RX 6000 series (RDNA 2)
+# GPU_ARCH=gfx1100  # RX 7000 series (RDNA 3)
+# GPU_ARCH=gfx90a   # MI200 series
+# GPU_ARCH=gfx942   # MI300 series
 
-# 5. Create docker-compose.rocm.yml (override file)
-# See docker-compose.rocm.yml section below
-
-# 6. Start bot with ROCm support
-docker compose -f docker-compose.yml -f docker-compose.rocm.yml up -d
+# 5. Start bot with ROCm support (uses Dockerfile.rocm)
+docker compose -f docker-compose.yml -f docker-compose.rocm.yml up -d --build
 ```
 
-**docker-compose.rocm.yml example:**
+**GPU Architecture Reference:**
+- **gfx1030**: RX 6000 series (RDNA 2) - RX 6700 XT, RX 6800, RX 6900 XT
+- **gfx1100**: RX 7000 series (RDNA 3) - RX 7700 XT, RX 7800 XT, RX 7900 XTX
+- **gfx90a**: MI200 series (CDNA 2) - MI210, MI250
+- **gfx942**: MI300 series (CDNA 3) - MI300A, MI300X
 
-```yaml
-services:
-  tts-service:
-    devices:
-      - /dev/kfd
-      - /dev/dri
-    group_add:
-      - video
-      - render
-    environment:
-      - ROCM_VISIBLE_DEVICES=0  # GPU ID to use
-      - HSA_OVERRIDE_GFX_VERSION=10.3.0  # Set for your GPU (e.g., 10.3.0 for RX 6000)
-```
-
-**Note:** ROCm support requires PyTorch built with ROCm support. You may need to create a custom TTS service Dockerfile with ROCm-compatible PyTorch:
-
-```dockerfile
-# Example: tts-service/Dockerfile.rocm
-FROM rocm/pytorch:rocm6.0_ubuntu22.04_py3.10_pytorch_2.1.1
-
-# Install dependencies
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Copy application
-COPY . /app
-WORKDIR /app
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
+**Docker Image:**
+The project uses `rocm/pytorch:rocm7.1_ubuntu22.04_py3.10_pytorch_release_2.8.0` which includes:
+- ROCm 7.1
+- PyTorch 2.8.0 with ROCm support
+- Python 3.10
+- Ubuntu 22.04
 
 **Performance:** Similar to NVIDIA (2-3x faster than CPU), though may vary by GPU model
 
@@ -506,8 +486,16 @@ curl -X POST http://localhost:8000/synthesize \
 
 - **Discord Intents**: Bot will fail silently if MESSAGE CONTENT INTENT is not enabled
 - **Lavalink Dependency**: Music features require Lavalink v4 server running before bot starts
+- **Dockerfile Selection**:
+  - `docker-compose.yml` uses `Dockerfile` (CPU only)
+  - `docker-compose.gpu.yml` uses `Dockerfile.gpu` (NVIDIA CUDA)
+  - `docker-compose.rocm.yml` uses `Dockerfile.rocm` (AMD ROCm)
+  - Each override file explicitly specifies its Dockerfile - no automatic selection
 - **NVIDIA GPU Support**: CUDA setup requires NVIDIA Container Toolkit and drivers ≥525.60.13
-- **AMD GPU Support**: ROCm setup requires ROCm 6.0+ drivers and compatible AMD GPU (see ROCm compatibility matrix)
+- **AMD GPU Support**:
+  - Requires ROCm 6.0+ drivers (ROCm 7.1 recommended)
+  - Must set `GPU_ARCH` in `.env` to match your GPU (e.g., `gfx1030` for RX 6000, `gfx1100` for RX 7000)
+  - See ROCm compatibility matrix for supported GPUs
 - **Voice Sample Quality**: Poor quality samples (background noise, too short) result in poor TTS output
 - **Rate Limits**: Gemini API has daily quotas - monitor usage in Google AI Studio
 - **File Permissions**: Docker volumes need proper permissions for `/app/voices` and `/app/cache`
