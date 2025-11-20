@@ -32,11 +32,17 @@ RUN pip install --no-cache-dir -r requirements-rocm.txt
 # Accept Coqui TTS license agreement for XTTS-v2 model
 ENV COQUI_TOS_AGREED=1
 
-# Copy source code first (model will be downloaded on first run)
-COPY . .
+# Pre-download XTTS-v2 model to avoid first-run delay
+# Use curl/wget to download model files directly, avoiding Python import issues
+RUN mkdir -p /root/.local/share/tts/tts_models--multilingual--multi-dataset--xtts_v2 && \
+    cd /root/.local/share/tts/tts_models--multilingual--multi-dataset--xtts_v2 && \
+    curl -L -o config.json https://coqui.gateway.scarf.sh/hf-coqui/XTTS-v2/main/config.json && \
+    curl -L -o model.pth https://coqui.gateway.scarf.sh/hf-coqui/XTTS-v2/main/model.pth && \
+    curl -L -o vocab.json https://coqui.gateway.scarf.sh/hf-coqui/XTTS-v2/main/vocab.json && \
+    curl -L -o speakers_xtts.pth https://coqui.gateway.scarf.sh/hf-coqui/XTTS-v2/main/speakers_xtts.pth
 
-# Note: XTTS-v2 model will be downloaded automatically on first synthesis
-# Skipping pre-download to avoid torchvision compatibility issues during build
+# Copy source code
+COPY . .
 
 # Create necessary directories
 RUN mkdir -p /app/voices /app/cache
