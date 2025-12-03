@@ -32,9 +32,6 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - LIBRETRANSLATE_URL=${LIBRETRANSLATE_URL:-}
-      - TTS_SERVICE_URL=${TTS_SERVICE_URL}
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
@@ -47,8 +44,6 @@ services:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      tts-service:
         condition: service_healthy
       lavalink:
         condition: service_healthy
@@ -63,67 +58,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    networks:
-      - discord-network
-
-  # TTS Service (Python + XTTS-v2)
-  tts-service:
-    build:
-      context: ./tts-service
-      dockerfile: Dockerfile
-    container_name: tts-service
-    env_file: .env
-    environment:
-      - REDIS_URL=${REDIS_URL}
-      - DATABASE_URL=${DATABASE_URL}
-      - MAX_CACHE_SIZE_GB=${MAX_CACHE_SIZE_GB:-10}
-      - CACHE_CLEANUP_HOURS=${CACHE_CLEANUP_HOURS:-24}
-      - TTS_SUPPORTED_LANGUAGES=${TTS_SUPPORTED_LANGUAGES:-en,ko,ja,zh-cn}
-    volumes:
-      - ./data/voices:/app/voices
-      - ./data/tts-cache:/app/cache
-    restart: unless-stopped
-    expose:
-      - "8000"
-    # GPU 사용을 원하면 아래 주석 해제
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    networks:
-      - discord-network
-
-  # LibreTranslate (Optional - Failsafe Translation)
-  # Enable with: docker compose --profile libretranslate up -d
-  libretranslate:
-    image: libretranslate/libretranslate:v1.6.3
-    container_name: libretranslate
-    profiles:
-      - libretranslate
-    restart: unless-stopped
-    environment:
-      - LT_LOAD_ONLY=en,ko,ja,zh,es,fr,de,ru,pt,it
-      - LT_THREADS=4
-      - LT_API_KEYS=false
-    volumes:
-      - libretranslate-data:/home/libretranslate/.local
-    expose:
-      - "5000"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:5000/languages || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 300s
     networks:
       - discord-network
 
@@ -171,8 +105,6 @@ volumes:
   postgres-data:
     driver: local
   redis-data:
-    driver: local
-  libretranslate-data:
     driver: local
 
 networks:

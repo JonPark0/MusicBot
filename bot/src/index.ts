@@ -6,14 +6,9 @@ import { cache } from './utils/cache';
 import { InteractionHandler } from './handlers/interactionHandler';
 import { MessageHandler } from './handlers/messageHandler';
 import { initializeMusicPlayer, getMusicPlayer } from './services/music/player';
-import { ttsPlayer } from './services/tts/player';
 
 // Import commands
-import { TranslateAdminCommand } from './commands/admin/translate-admin';
-import { TTSAdminCommand } from './commands/admin/tts-admin';
 import { MusicAdminCommand } from './commands/admin/music-admin';
-import { TranslateCommand } from './commands/user/translate';
-import { TTSCommand } from './commands/user/tts';
 import { MusicCommand } from './commands/user/music';
 
 // Validate required environment variables
@@ -21,7 +16,6 @@ function validateEnvironment() {
   const required = [
     'DISCORD_TOKEN',
     'DISCORD_CLIENT_ID',
-    'GEMINI_API_KEY',
     'DATABASE_URL',
     'REDIS_URL',
   ];
@@ -64,13 +58,9 @@ class DiscordBot {
 
   private registerCommands() {
     // Admin commands
-    this.interactionHandler.registerCommand(new TranslateAdminCommand());
-    this.interactionHandler.registerCommand(new TTSAdminCommand());
     this.interactionHandler.registerCommand(new MusicAdminCommand());
 
     // User commands
-    this.interactionHandler.registerCommand(new TranslateCommand());
-    this.interactionHandler.registerCommand(new TTSCommand());
     this.interactionHandler.registerCommand(new MusicCommand());
   }
 
@@ -129,9 +119,6 @@ class DiscordBot {
         } catch (error) {
           logger.debug('Music player not initialized yet');
         }
-
-        // Stop TTS player if active
-        ttsPlayer.leaveChannel(guild.id);
 
         logger.info(`Cleaned up resources for guild ${guild.id}`);
       } catch (error) {

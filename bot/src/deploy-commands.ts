@@ -3,19 +3,11 @@ import { config } from './config/constants';
 import { logger } from './utils/logger';
 
 // Import commands
-import { TranslateAdminCommand } from './commands/admin/translate-admin';
-import { TTSAdminCommand } from './commands/admin/tts-admin';
 import { MusicAdminCommand } from './commands/admin/music-admin';
-import { TranslateCommand } from './commands/user/translate';
-import { TTSCommand } from './commands/user/tts';
 import { MusicCommand } from './commands/user/music';
 
 const commands = [
-  new TranslateAdminCommand().data.toJSON(),
-  new TTSAdminCommand().data.toJSON(),
   new MusicAdminCommand().data.toJSON(),
-  new TranslateCommand().data.toJSON(),
-  new TTSCommand().data.toJSON(),
   new MusicCommand().data.toJSON(),
 ];
 
