@@ -1,75 +1,53 @@
-# Discord Multi-Function Bot
+# Discord Music Streaming Bot
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
-[![CUDA](https://img.shields.io/badge/CUDA-12.4-76B900.svg)](https://developer.nvidia.com/cuda-toolkit)
 
 [한국어](./README.ko.md) | English
 
-A powerful, self-hosted Discord bot with translation, TTS (Text-to-Speech), and music streaming capabilities, designed for personal homeserver deployment.
+A powerful, self-hosted Discord music bot with Lavalink support, designed for personal homeserver deployment.
 
 ## Features
 
-### Translation
-
-- Automatic cross-channel translation using Google Gemini AI API
-- Optional LibreTranslate support for offline/backup translation
-- Context-aware translation that preserves Discord formatting
-- Bidirectional translation support
-- Multi-language support: English, Korean, Japanese, Chinese, Spanish, French, German, Russian, Portuguese, Italian
-
-### Text-to-Speech (TTS)
-
-- Custom voice cloning using Coqui XTTS-v2 model
-- User-specific voice registration (6-12 second audio samples)
-- Multiple voices per user with easy switching
-- Automatic playback in voice channels
-- Multi-language support for TTS synthesis
-
 ### Music Streaming
 
-- Multi-platform support: YouTube, Spotify, SoundCloud
-- Real-time streaming (no downloads required)
+- Multi-platform support: YouTube, Spotify, SoundCloud, Bandcamp, Twitch
+- Real-time streaming using Lavalink v4 (no downloads required)
 - Playlist support for all platforms
-- Advanced queue management (shuffle, loop, remove)
+- Advanced queue management (shuffle, loop modes, skip, remove)
 - Volume control and playback controls
+- Per-guild player management
+- Music playback history tracking
 
 ## Architecture
 
 ```
 Docker Compose Stack
 ├── Discord Bot (Node.js 22 / TypeScript 5.9)
-├── TTS Service (Python 3.11 / FastAPI / CUDA 12.4)
-├── LibreTranslate (Optional - Failsafe)
+├── Lavalink v4 Audio Server
 ├── PostgreSQL 17 Database
-└── Redis 7 Cache & Queue
+└── Redis 7 Cache
 ```
 
 ## Tech Stack
 
 - **Discord Bot**: Node.js 22, TypeScript 5.9, discord.js v14.24
-- **TTS Service**: Python 3.11, FastAPI 0.115, Coqui XTTS-v2, PyTorch 2.5, CUDA 12.4 / ROCm 6.0+
-- **Translation**: Google Gemini 2.0 Flash, LibreTranslate (optional)
-- **Music**: discord-player v7.1, FFmpeg, @discordjs/voice 0.19
+- **Music**: Lavalink v4, lavalink-client v2.5, @discordjs/voice 0.19
 - **Database**: PostgreSQL 17
 - **Cache**: Redis 7
-- **Deployment**: Docker, Docker Compose, NVIDIA Container Toolkit (for NVIDIA GPU), ROCm (for AMD GPU)
+- **Deployment**: Docker, Docker Compose
 
 ## Prerequisites
 
 - Docker & Docker Compose
 - Discord Bot Token ([Create here](https://discord.com/developers/applications))
-- Google Gemini API Key ([Get here](https://aistudio.google.com/app/apikey))
-- (Optional) Spotify Client ID & Secret for Spotify support
-- (Optional) NVIDIA GPU or AMD GPU for faster TTS processing
-- At least 8GB RAM (16GB recommended for TTS)
-- 10GB free disk space
+- (Optional) Spotify Client ID & Secret for better Spotify handling
+- (Optional) YouTube API Key for higher rate limits
+- At least 4GB RAM (8GB recommended)
+- 5GB free disk space
 
 ## Quick Start
-
-### Standard Setup (CPU)
 
 ```bash
 # 1. Clone the repository
@@ -93,27 +71,6 @@ docker compose up -d
 docker compose exec discord-bot npm run deploy-commands
 ```
 
-### GPU/CUDA Setup (Recommended for TTS)
-
-For **NVIDIA GPU** users with CUDA support:
-
-```bash
-# 1-4. Same as above (clone, env, configure)
-
-# 5. Start with GPU support
-docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
-
-# 6. Deploy slash commands
-docker compose exec discord-bot npm run deploy-commands
-```
-
-**Requirements for GPU:**
-- NVIDIA GPU with CUDA support
-- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) installed
-- NVIDIA drivers version 525.60.13 or higher
-
-GPU provides **2-3x faster** TTS synthesis compared to CPU.
-
 ## Configuration
 
 Edit `.env` file with your credentials:
@@ -122,16 +79,19 @@ Edit `.env` file with your credentials:
 # Required
 DISCORD_TOKEN=your_discord_bot_token
 DISCORD_CLIENT_ID=your_client_id
-GEMINI_API_KEY=your_gemini_api_key
 POSTGRES_PASSWORD=your_secure_password
 REDIS_PASSWORD=your_redis_password
 
 # Optional - Music Platforms (work without API keys)
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+YOUTUBE_API_KEY=your_youtube_api_key
+YOUTUBE_COOKIE=your_youtube_cookie
 
-# Optional - LibreTranslate (if you want fallback translation)
-# LIBRETRANSLATE_URL=http://libretranslate:5000
+# Lavalink Configuration
+LAVALINK_HOST=lavalink
+LAVALINK_PORT=2333
+LAVALINK_PASSWORD=youshallnotpass
 ```
 
 ### Discord Developer Portal Setup
@@ -144,12 +104,27 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
    - ✅ **SERVER MEMBERS INTENT**
 4. Save Changes
 
-## Documentation
+## Commands
 
-- [Setup Guide](./docs/SETUP.md) - Detailed installation instructions
-- [Commands Reference](./docs/COMMANDS.md) - Complete list of commands
-- [한국어 설치 가이드](./docs/SETUP.ko.md) - 한국어 설치 방법
-- [한국어 명령어](./docs/COMMANDS.ko.md) - 한국어 명령어 목록
+### Music Commands (User)
+
+- `/music play <query>` - Play a song or add to queue
+- `/music pause` - Pause current playback
+- `/music resume` - Resume playback
+- `/music skip` - Skip current song
+- `/music stop` - Stop playback and clear queue
+- `/music queue` - View current queue
+- `/music nowplaying` - Show currently playing track
+- `/music volume <level>` - Set volume (0-100)
+- `/music shuffle` - Shuffle the queue
+- `/music loop <mode>` - Set loop mode (off, track, queue)
+- `/music remove <position>` - Remove track from queue
+
+### Music Commands (Admin)
+
+- `/music-admin enable` - Enable music in current channel
+- `/music-admin disable` - Disable music in current channel
+- `/music-admin config` - View music configuration
 
 ## Security Features
 
@@ -161,15 +136,42 @@ SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 
 ## Performance
 
-- Translation: ~1-2 seconds per message (Gemini) or ~0.5s (cached)
-- TTS: ~2-5 seconds to generate speech (CPU), **~1-2s (GPU/CUDA/ROCm)**
-- Music: Near-instant playback with streaming
+- Music: Near-instant playback with Lavalink streaming
 - Resource Usage:
   - Bot: ~200MB RAM
-  - TTS Service: ~2-4GB RAM (model loaded), ~4-6GB VRAM (GPU)
+  - Lavalink: ~500MB RAM
   - PostgreSQL: ~100MB RAM
   - Redis: ~50MB RAM
-  - (Optional) LibreTranslate: ~1GB RAM
+
+## Troubleshooting
+
+### Music not playing
+
+1. Check Lavalink is running: `docker compose logs lavalink`
+2. Verify bot has voice permissions in your server
+3. Ensure you're in a voice channel before playing music
+
+### Bot not responding
+
+1. Check bot logs: `docker compose logs discord-bot`
+2. Verify Discord intents are enabled in Developer Portal
+3. Ensure slash commands are deployed: `docker compose exec discord-bot npm run deploy-commands`
+
+## Development
+
+```bash
+# View logs
+docker compose logs -f discord-bot
+
+# Restart bot
+docker compose restart discord-bot
+
+# Rebuild after code changes
+docker compose up -d --build discord-bot
+
+# Stop all services
+docker compose down
+```
 
 ## Contributing
 
@@ -182,13 +184,11 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Acknowledgments
 
 - [discord.js](https://discord.js.org/) - Discord API library
-- [Coqui TTS](https://github.com/coqui-ai/TTS) - XTTS-v2 model
-- [Google Gemini](https://ai.google.dev/) - AI-powered translation
-- [LibreTranslate](https://github.com/LibreTranslate/LibreTranslate) - Open-source translation
-- [discord-player](https://github.com/Androz2091/discord-player) - Music streaming library
+- [Lavalink](https://github.com/lavalink-devs/Lavalink) - Audio streaming server
+- [lavalink-client](https://github.com/Tomato6966/lavalink-client) - Lavalink client library
 
 ## Support
 
 For issues and questions:
 - Open an issue on GitHub
-- Check [SETUP.md](./docs/SETUP.md) for troubleshooting
+- Check documentation for troubleshooting
