@@ -37,16 +37,8 @@ Thumbs.db
 *~
 
 # Data files
-data/voices/*
-data/audio/*
-data/tts-cache/*
-data/libretranslate/*
-
-# Keep directory structure
-!data/voices/.gitkeep
-!data/audio/.gitkeep
-!data/tts-cache/.gitkeep
-!data/libretranslate/.gitkeep
+data/*
+!data/.gitkeep
 
 # Docker
 *.pid
@@ -56,7 +48,3 @@ data/libretranslate/*
 # Database
 *.db
 *.sqlite
-
-# Custom Folder
-saori-revive
-CLAUDE.md

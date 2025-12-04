@@ -32,9 +32,6 @@ RUN npm run build
 # Remove dev dependencies after build
 RUN npm prune --production
 
-# Create audio directory
-RUN mkdir -p /app/audio
-
 # Set environment
 ENV NODE_ENV=production
 
