@@ -49,7 +49,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
     volumes:
-      - ./data/audio:/app/audio
       - ./logs/bot:/app/logs
     # Health check uses process monitoring instead of HTTP (bot has no HTTP server)
     healthcheck:
