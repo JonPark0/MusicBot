@@ -1,4 +1,4 @@
-import { EmbedBuilder, User, ColorResolvable } from 'discord.js';
+import { EmbedBuilder, User } from 'discord.js';
 
 export class EmbedFactory {
   /**
@@ -42,29 +42,6 @@ export class EmbedFactory {
       .setColor(0xFEE75C)
       .setTitle(`⚠️ ${title}`)
       .setDescription(description)
-      .setTimestamp();
-  }
-
-  /**
-   * Create a translated message embed
-   */
-  static translatedMessage(
-    user: User,
-    translatedText: string,
-    originalText: string,
-    sourceLang: string,
-    targetLang: string
-  ): EmbedBuilder {
-    return new EmbedBuilder()
-      .setAuthor({
-        name: user.username,
-        iconURL: user.displayAvatarURL(),
-      })
-      .setDescription(translatedText)
-      .setColor(0x5865F2)
-      .setFooter({
-        text: `${sourceLang.toUpperCase()} → ${targetLang.toUpperCase()} | Original: ${originalText.substring(0, 100)}${originalText.length > 100 ? '...' : ''}`,
-      })
       .setTimestamp();
   }
 

@@ -202,27 +202,6 @@ Without these, the bot will not function correctly.
 
 ## Testing and Debugging
 
-### Lavalink Connectivity
-
-The codebase includes a legacy Saori bot at `saori-revive/` with Lavalink test scripts:
-
-```bash
-# Quick connectivity check
-./saori-revive/quick-test-lavalink.sh
-
-# Comprehensive test suite
-./saori-revive/test-lavalink.sh
-
-# Detailed debugging
-./saori-revive/debug-lavalink.sh
-```
-
-These scripts test:
-- Lavalink server reachability
-- WebSocket connection
-- Track loading and playback
-- Node statistics
-
 ### Log Levels
 
 Set `LOG_LEVEL` environment variable:
@@ -276,11 +255,3 @@ docker compose exec redis redis-cli -a your_redis_password ping
 - **Lavalink Dependency**: Music features require Lavalink v4 server running before bot starts
 - **Rate Limits**: Monitor YouTube/Spotify API quotas if using API keys
 - **File Permissions**: Docker volumes need proper permissions for `/app/audio` and `/app/logs`
-
-## Legacy Saori Bot
-
-The `saori-revive/` directory contains a legacy Python-based Discord music bot:
-- Uses discord.py and direct Lavalink integration
-- Separate project, not part of main TypeScript bot
-- Useful for Lavalink testing scripts and reference implementation
-- Not recommended for active development (TypeScript bot is current)
