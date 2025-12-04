@@ -12,8 +12,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Music enabled channels
 CREATE TABLE IF NOT EXISTS music_channels (
   id SERIAL PRIMARY KEY,
-  guild_id VARCHAR(25) NOT NULL,
-  channel_id VARCHAR(25) NOT NULL,
+  guild_id VARCHAR(30) NOT NULL,
+  channel_id VARCHAR(30) NOT NULL,
   enabled BOOLEAN DEFAULT true,
   max_queue_size INTEGER DEFAULT 100,
   max_duration_seconds INTEGER DEFAULT 3600,
@@ -25,11 +25,11 @@ CREATE TABLE IF NOT EXISTS music_channels (
 -- Music playback history
 CREATE TABLE IF NOT EXISTS music_history (
   id SERIAL PRIMARY KEY,
-  guild_id VARCHAR(25) NOT NULL,
-  user_id VARCHAR(25) NOT NULL,
+  guild_id VARCHAR(30) NOT NULL,
+  user_id VARCHAR(30) NOT NULL,
   track_title TEXT,
   track_url TEXT,
-  platform VARCHAR(20),
+  platform VARCHAR(30),
   duration_seconds INTEGER,
   played_at TIMESTAMP DEFAULT NOW()
 );
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS music_history (
 -- Music playlists (user-created)
 CREATE TABLE IF NOT EXISTS user_playlists (
   id SERIAL PRIMARY KEY,
-  user_id VARCHAR(25) NOT NULL,
+  user_id VARCHAR(30) NOT NULL,
   playlist_name VARCHAR(100) NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(user_id, playlist_name)
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS playlist_tracks (
 -- Custom command permissions
 CREATE TABLE IF NOT EXISTS command_permissions (
   id SERIAL PRIMARY KEY,
-  guild_id VARCHAR(25) NOT NULL,
+  guild_id VARCHAR(30) NOT NULL,
   command_name VARCHAR(100) NOT NULL,
   required_role_ids TEXT[],
   admin_only BOOLEAN DEFAULT false,
@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS command_permissions (
 -- Guild configuration
 CREATE TABLE IF NOT EXISTS guild_config (
   id SERIAL PRIMARY KEY,
-  guild_id VARCHAR(25) NOT NULL UNIQUE,
+  guild_id VARCHAR(30) NOT NULL UNIQUE,
   prefix VARCHAR(10) DEFAULT '!',
   language VARCHAR(10) DEFAULT 'en',
   timezone VARCHAR(50) DEFAULT 'UTC',
