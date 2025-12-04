@@ -19,13 +19,6 @@ export const config = {
     url: process.env.REDIS_URL || 'redis://redis:6379',
   },
 
-  // External Services
-  services: {
-    geminiApiKey: process.env.GEMINI_API_KEY || '',
-    libreTranslateUrl: process.env.LIBRETRANSLATE_URL || 'http://libretranslate:5000',
-    ttsServiceUrl: process.env.TTS_SERVICE_URL || 'http://tts-service:8000',
-  },
-
   // Spotify (for music)
   spotify: {
     clientId: process.env.SPOTIFY_CLIENT_ID || '',
@@ -35,12 +28,6 @@ export const config = {
   // YouTube
   youtube: {
     apiKey: process.env.YOUTUBE_API_KEY || '',
-  },
-
-  // TTS Settings
-  tts: {
-    maxLength: parseInt(process.env.TTS_MAX_LENGTH || '500'),
-    queueSize: parseInt(process.env.TTS_QUEUE_SIZE || '10'),
   },
 
   // Music Settings
@@ -54,22 +41,6 @@ export const config = {
     level: process.env.LOG_LEVEL || 'info',
   },
 };
-
-// Supported languages for translation
-export const SUPPORTED_LANGUAGES = {
-  en: 'English',
-  ko: 'Korean',
-  ja: 'Japanese',
-  zh: 'Chinese',
-  es: 'Spanish',
-  fr: 'French',
-  de: 'German',
-  ru: 'Russian',
-  pt: 'Portuguese',
-  it: 'Italian',
-} as const;
-
-export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
 
 // Music platforms
 export const MUSIC_PLATFORMS = {
