@@ -264,11 +264,21 @@ export class MusicCommand {
   private async handleSkip(interaction: ChatInputCommandInteraction) {
     const musicPlayer = getMusicPlayer();
     const queueSize = musicPlayer.getQueueSize(interaction.guildId!);
+    const isPlaying = musicPlayer.isPlaying(interaction.guildId!);
 
-    if (queueSize === 0 && !musicPlayer.isPlaying(interaction.guildId!)) {
+    if (!isPlaying) {
       await interaction.reply({
-        embeds: [EmbedFactory.error('Queue Empty', 'No tracks in the queue.')],
+        embeds: [EmbedFactory.error('Not Playing', 'Nothing is currently playing.')],
         ephemeral: true,
+      });
+      return;
+    }
+
+    if (queueSize === 0) {
+      // No next track, stop playback instead
+      await musicPlayer.stop(interaction.guildId!);
+      await interaction.reply({
+        embeds: [EmbedFactory.success('Stopped', 'No more tracks in queue. Playback stopped.')],
       });
       return;
     }

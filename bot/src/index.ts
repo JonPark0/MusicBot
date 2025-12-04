@@ -66,7 +66,7 @@ class DiscordBot {
 
   private registerEventHandlers() {
     // Use 'clientReady' instead of 'ready' to avoid deprecation warning in discord.js v15
-    this.client.once('ready', async () => {
+    this.client.once('clientReady', async () => {
       logger.info(`Bot logged in as ${this.client.user?.tag}`);
       logger.info(`Serving ${this.client.guilds.cache.size} guilds`);
 
