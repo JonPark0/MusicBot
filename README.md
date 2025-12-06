@@ -1,4 +1,4 @@
-# Discord Music Streaming Bot
+# MusicBot - Discord Music Streaming Bot
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
