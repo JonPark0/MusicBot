@@ -7,7 +7,7 @@ export interface Track {
   url: string;
   duration: number;
   platform: string;
-  requestedBy: string;
+  requestedBy: string | null;
   thumbnail?: string;
 }
 

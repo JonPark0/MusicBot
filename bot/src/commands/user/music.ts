@@ -355,12 +355,23 @@ export class MusicCommand {
 
     const volume = musicPlayer.getVolume(interaction.guildId!);
 
+    // Fetch the user who requested the track, or fall back to the interaction user
+    let requestedByUser = interaction.user;
+    if (track.requestedBy) {
+      try {
+        requestedByUser = await interaction.client.users.fetch(track.requestedBy);
+      } catch (error) {
+        logger.error('Failed to fetch user for requestedBy', { userId: track.requestedBy, error });
+        // Fall back to interaction user
+      }
+    }
+
     const embed = EmbedFactory.nowPlaying(
       track.title,
       track.url,
       track.platform,
       track.duration,
-      track.requestedBy ? await interaction.client.users.fetch(track.requestedBy) : interaction.user
+      requestedByUser
     );
 
     embed.addFields({ name: 'Volume', value: `${volume}%`, inline: true });
