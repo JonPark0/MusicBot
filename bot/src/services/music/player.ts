@@ -417,13 +417,26 @@ export class MusicPlayer {
    * Convert Lavalink track to our Track interface
    */
   private convertLavalinkTrack(lavalinkTrack: any, requestedBy: string): Track {
-    const requester = requestedBy || lavalinkTrack.requester;
+    // Extract the actual user ID from either the parameter or the lavalinkTrack.requester
+    let requesterUserId: string | null = null;
+
+    if (requestedBy && requestedBy !== 'null' && requestedBy !== '') {
+      requesterUserId = requestedBy;
+    } else if (lavalinkTrack.requester) {
+      // lavalinkTrack.requester might be a string ID or an object with id property
+      if (typeof lavalinkTrack.requester === 'string') {
+        requesterUserId = lavalinkTrack.requester;
+      } else if (lavalinkTrack.requester.id) {
+        requesterUserId = lavalinkTrack.requester.id;
+      }
+    }
+
     return {
       title: lavalinkTrack.info?.title || 'Unknown',
       url: lavalinkTrack.info?.uri || '',
       duration: Math.floor((lavalinkTrack.info?.duration || 0) / 1000),
       platform: this.getPlatform(lavalinkTrack),
-      requestedBy: requester && requester !== 'null' && requester !== '' ? requester : null,
+      requestedBy: requesterUserId,
       thumbnail: lavalinkTrack.info?.artworkUrl || lavalinkTrack.info?.thumbnail || undefined,
     };
   }
