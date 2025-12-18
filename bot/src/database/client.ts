@@ -8,9 +8,10 @@ class Database {
   constructor() {
     this.pool = new Pool({
       connectionString: config.database.url,
-      max: 20,
+      max: 5,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 5000,
+      statement_timeout: 10000,
     });
 
     this.pool.on('error', (err) => {
@@ -19,11 +20,12 @@ class Database {
   }
 
   async query(text: string, params?: any[]): Promise<QueryResult> {
-    const start = Date.now();
     try {
       const res = await this.pool.query(text, params);
-      const duration = Date.now() - start;
-      logger.debug('Executed query', { text, duration, rows: res.rowCount });
+      // Only log query details in debug mode to reduce overhead
+      if (logger.isDebugEnabled && logger.isDebugEnabled()) {
+        logger.debug('Executed query', { text, rows: res.rowCount });
+      }
       return res;
     } catch (error) {
       logger.error('Database query error', { text, error });
