@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
-      - _JAVA_OPTIONS=-Xmx384m -Xms256m
+      - _JAVA_OPTIONS=-Xmx256m -Xms128m
     volumes:
       - ./lavalink/application.yml:/opt/Lavalink/application.yml
       - ./logs/lavalink:/opt/Lavalink/logs
@@ -15,11 +15,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: '1.0'
+          memory: 320M
+          cpus: '0.75'
         reservations:
-          memory: 256M
-          cpus: '0.5'
+          memory: 128M
+          cpus: '0.25'
     healthcheck:
       # Use /version endpoint with Authorization header to avoid warning logs
       test: ["CMD-SHELL", "curl -s -H 'Authorization: ${LAVALINK_PASSWORD:-youshallnotpass}' http://localhost:2333/version || exit 1"]
@@ -39,7 +39,7 @@ services:
     env_file: .env
     environment:
       - NODE_ENV=production
-      - NODE_OPTIONS=--max-old-space-size=192
+      - NODE_OPTIONS=--max-old-space-size=128
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
       - DISCORD_TOKEN=${DISCORD_TOKEN}
@@ -63,11 +63,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
-          cpus: '0.5'
+          memory: 160M
+          cpus: '0.4'
         reservations:
-          memory: 128M
-          cpus: '0.25'
+          memory: 96M
+          cpus: '0.2'
     # Health check uses process monitoring instead of HTTP (bot has no HTTP server)
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'node dist/index.js' || exit 1"]
@@ -86,6 +86,16 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=32MB"
+      - "-c"
+      - "effective_cache_size=64MB"
+      - "-c"
+      - "max_connections=20"
+      - "-c"
+      - "work_mem=2MB"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -95,11 +105,11 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
-          cpus: '0.5'
-        reservations:
           memory: 128M
-          cpus: '0.25'
+          cpus: '0.3'
+        reservations:
+          memory: 64M
+          cpus: '0.1'
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -117,7 +127,7 @@ services:
       redis-server
       --save 900 1 --save 300 10 --save 60 10000
       --requirepass ${REDIS_PASSWORD}
-      --maxmemory 96mb
+      --maxmemory 48mb
       --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
@@ -126,10 +136,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
-          cpus: '0.25'
-        reservations:
           memory: 64M
+          cpus: '0.2'
+        reservations:
+          memory: 48M
           cpus: '0.1'
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]

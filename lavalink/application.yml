@@ -28,13 +28,13 @@ lavalink:
       rotation: true
       channelMix: true
       lowPass: true
-    bufferDurationMs: 400
-    frameBufferDurationMs: 5000
-    youtubePlaylistLoadLimit: 6
-    playerUpdateInterval: 5
+    bufferDurationMs: 300
+    frameBufferDurationMs: 3000
+    youtubePlaylistLoadLimit: 3
+    playerUpdateInterval: 10
     youtubeSearchEnabled: true
     soundcloudSearchEnabled: true
-    gc-warnings: true
+    gc-warnings: false
 
 plugins:
   youtube:
@@ -77,5 +77,5 @@ logging:
     maxPayloadLength: 1000
   logback:
     rollingpolicy:
-      max-file-size: 100MB
-      max-history: 7
+      max-file-size: 25MB
+      max-history: 3
