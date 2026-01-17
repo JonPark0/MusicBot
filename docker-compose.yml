@@ -41,7 +41,7 @@ services:
       - NODE_ENV=production
       - NODE_OPTIONS=--max-old-space-size=128
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
+      # - REDIS_URL=${REDIS_URL}  # Disabled - Redis not currently used
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
@@ -53,8 +53,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
+      # redis:  # Disabled - Redis not currently used
+      #   condition: service_healthy
       lavalink:
         condition: service_healthy
     restart: unless-stopped
@@ -118,42 +118,43 @@ services:
     networks:
       - discord-network
 
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: discord-redis
-    restart: unless-stopped
-    command: >
-      redis-server
-      --save 900 1 --save 300 10 --save 60 10000
-      --requirepass ${REDIS_PASSWORD}
-      --maxmemory 48mb
-      --maxmemory-policy allkeys-lru
-    volumes:
-      - redis-data:/data
-    expose:
-      - "6379"
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-          cpus: '0.2'
-        reservations:
-          memory: 48M
-          cpus: '0.1'
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-    networks:
-      - discord-network
+  # Redis Cache (DISABLED - not currently used, saves 64MB memory)
+  # Uncomment below if you need Redis for caching in the future
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: discord-redis
+  #   restart: unless-stopped
+  #   command: >
+  #     redis-server
+  #     --save 900 1 --save 300 10 --save 60 10000
+  #     --requirepass ${REDIS_PASSWORD}
+  #     --maxmemory 48mb
+  #     --maxmemory-policy allkeys-lru
+  #   volumes:
+  #     - redis-data:/data
+  #   expose:
+  #     - "6379"
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 64M
+  #         cpus: '0.2'
+  #       reservations:
+  #         memory: 48M
+  #         cpus: '0.1'
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+  #     interval: 10s
+  #     timeout: 3s
+  #     retries: 5
+  #   networks:
+  #     - discord-network
 
 volumes:
   postgres-data:
     driver: local
-  redis-data:
-    driver: local
+  # redis-data:  # Disabled - Redis not currently used
+  #   driver: local
 
 networks:
   discord-network:
