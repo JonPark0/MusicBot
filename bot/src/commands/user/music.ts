@@ -19,6 +19,12 @@ export class MusicCommand {
             .setDescription('YouTube/Spotify/SoundCloud URL or search query')
             .setRequired(true)
         )
+        .addStringOption((option) =>
+          option
+            .setName('timestamp')
+            .setDescription('Start time (e.g. 1:30, 90, 1m30s)')
+            .setRequired(false)
+        )
     )
     .addSubcommand((subcommand) =>
       subcommand.setName('pause').setDescription('Pause current track')
@@ -146,10 +152,52 @@ export class MusicCommand {
     }
   }
 
+  private parseTimestamp(value: string): number | null {
+    // Handle HH:MM:SS or MM:SS
+    const colonMatch = value.match(/^(?:(\d+):)?(\d+):(\d+)$|^(\d+):(\d+)$/);
+    if (colonMatch) {
+      if (colonMatch[1] !== undefined) {
+        return (parseInt(colonMatch[1]) * 3600 + parseInt(colonMatch[2]) * 60 + parseInt(colonMatch[3])) * 1000;
+      }
+      return (parseInt(colonMatch[4]) * 60 + parseInt(colonMatch[5])) * 1000;
+    }
+
+    // Handle 1h2m3s / 1m30s / 90s
+    const humanMatch = value.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+    if (humanMatch && value.match(/\d/)) {
+      const h = parseInt(humanMatch[1] || '0');
+      const m = parseInt(humanMatch[2] || '0');
+      const s = parseInt(humanMatch[3] || '0');
+      return (h * 3600 + m * 60 + s) * 1000;
+    }
+
+    // Plain seconds
+    const seconds = parseInt(value);
+    if (!isNaN(seconds)) {
+      return seconds * 1000;
+    }
+
+    return null;
+  }
+
+  private extractTimestampFromUrl(url: string): number | null {
+    try {
+      const parsed = new URL(url);
+      const t = parsed.searchParams.get('t');
+      if (t) {
+        return this.parseTimestamp(t);
+      }
+    } catch {
+      // Not a valid URL
+    }
+    return null;
+  }
+
   private async handlePlay(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
 
     const query = interaction.options.get('url')?.value as string;
+    const timestampInput = interaction.options.get('timestamp')?.value as string | undefined;
     const member = interaction.member as GuildMember;
     const voiceChannel = member.voice.channel as VoiceChannel;
 
@@ -165,9 +213,32 @@ export class MusicCommand {
       return;
     }
 
+    // Resolve start position: explicit timestamp option takes priority, then &t= in URL
+    let startPosition: number | undefined;
+    if (timestampInput) {
+      const parsed = this.parseTimestamp(timestampInput);
+      if (parsed === null) {
+        await interaction.editReply({
+          embeds: [
+            EmbedFactory.error(
+              'Invalid Timestamp',
+              'Use formats like `1:30`, `90`, or `1m30s`.'
+            ),
+          ],
+        });
+        return;
+      }
+      startPosition = parsed;
+    } else {
+      const fromUrl = this.extractTimestampFromUrl(query);
+      if (fromUrl !== null) {
+        startPosition = fromUrl;
+      }
+    }
+
     try {
       const musicPlayer = getMusicPlayer();
-      const result = await musicPlayer.play(voiceChannel, query, member);
+      const result = await musicPlayer.play(voiceChannel, query, member, startPosition);
 
       if (!result) {
         await interaction.editReply({

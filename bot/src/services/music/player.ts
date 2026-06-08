@@ -90,7 +90,7 @@ export class MusicPlayer {
   /**
    * Play a track or add to queue
    */
-  async play(channel: VoiceChannel, query: string, requestedBy: GuildMember): Promise<Track | Track[] | null> {
+  async play(channel: VoiceChannel, query: string, requestedBy: GuildMember, startPosition?: number): Promise<Track | Track[] | null> {
     try {
       const manager = this.streamingService.getManager();
 
@@ -175,7 +175,7 @@ export class MusicPlayer {
 
         // Start playing if not already
         if (!player.playing && !player.paused) {
-          await player.play();
+          await player.play({ startTime: startPosition });
         }
 
         const track = this.convertLavalinkTrack(lavalinkTrack, requestedBy.id);
