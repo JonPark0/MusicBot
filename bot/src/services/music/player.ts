@@ -175,7 +175,7 @@ export class MusicPlayer {
 
         // Start playing if not already
         if (!player.playing && !player.paused) {
-          await player.play({ startTime: startPosition });
+          await player.play({ position: startPosition });
         }
 
         const track = this.convertLavalinkTrack(lavalinkTrack, requestedBy.id);
