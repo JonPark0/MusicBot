@@ -4,6 +4,7 @@ import { EmbedFactory } from '../../utils/embeds';
 import { getMusicPlayer } from '../../services/music/player';
 import { LoopMode } from '../../services/music/queue';
 import { PermissionManager } from '../../middleware/permissions';
+import { recommendationService } from '../../services/music/recommendation';
 
 export class MusicCommand {
   data = new SlashCommandBuilder()
@@ -94,6 +95,39 @@ export class MusicCommand {
             .setRequired(true)
             .setMinValue(1)
         )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName('random')
+        .setDescription('Play music based on previous play history')
+        .addStringOption((option) =>
+          option
+            .setName('mode')
+            .setDescription('Previous: mix of favorites + new picks. Discover: only new picks.')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Previous', value: 'previous' },
+              { name: 'Discover', value: 'discover' }
+            )
+        )
+        .addStringOption((option) =>
+          option
+            .setName('scope')
+            .setDescription('Base picks on the whole server or just your own history')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Server', value: 'server' },
+              { name: 'Me', value: 'me' }
+            )
+        )
+        .addIntegerOption((option) =>
+          option
+            .setName('count')
+            .setDescription('Number of tracks to queue (default 5)')
+            .setRequired(false)
+            .setMinValue(1)
+            .setMaxValue(10)
+        )
     );
 
   async execute(interaction: ChatInputCommandInteraction) {
@@ -148,6 +182,9 @@ export class MusicCommand {
         break;
       case 'remove':
         await this.handleRemove(interaction);
+        break;
+      case 'random':
+        await this.handleRandom(interaction);
         break;
     }
   }
@@ -539,5 +576,102 @@ export class MusicCommand {
     await interaction.reply({
       embeds: [EmbedFactory.success('Track Removed', `Removed track at position ${position}`)],
     });
+  }
+
+  private async handleRandom(interaction: ChatInputCommandInteraction) {
+    await interaction.deferReply();
+
+    const member = interaction.member as GuildMember;
+    const voiceChannel = member.voice.channel as VoiceChannel;
+
+    if (!voiceChannel) {
+      await interaction.editReply({
+        embeds: [
+          EmbedFactory.error(
+            'Not in Voice Channel',
+            'You must be in a voice channel to play music.'
+          ),
+        ],
+      });
+      return;
+    }
+
+    const modeInput = (interaction.options.get('mode')?.value as string) || 'previous';
+    const scopeInput = (interaction.options.get('scope')?.value as string) || 'server';
+    const count = (interaction.options.get('count')?.value as number) || 5;
+
+    const mode = modeInput === 'discover' ? 'discover' : 'mix';
+    const userId = scopeInput === 'me' ? interaction.user.id : undefined;
+
+    try {
+      const { queries, geminiUsed } = await recommendationService.getRecommendations({
+        guildId: interaction.guildId!,
+        userId,
+        mode,
+        count,
+      });
+
+      if (queries.length === 0) {
+        await interaction.editReply({
+          embeds: [
+            EmbedFactory.info(
+              'No History',
+              scopeInput === 'me'
+                ? "You don't have any play history yet. Play some tracks first!"
+                : "This server doesn't have any play history yet. Play some tracks first!"
+            ),
+          ],
+        });
+        return;
+      }
+
+      const musicPlayer = getMusicPlayer();
+      const queuedTitles: string[] = [];
+
+      for (const query of queries) {
+        if (queuedTitles.length >= count) {
+          break;
+        }
+
+        try {
+          const result = await musicPlayer.play(voiceChannel, query, member);
+          if (result && !Array.isArray(result)) {
+            queuedTitles.push(result.title);
+          }
+        } catch (error) {
+          logger.error('Failed to queue random track', { query, error });
+        }
+      }
+
+      if (queuedTitles.length === 0) {
+        await interaction.editReply({
+          embeds: [
+            EmbedFactory.error('No Tracks Found', 'Could not find any matching tracks to play.'),
+          ],
+        });
+        return;
+      }
+
+      const sourceLine = geminiUsed
+        ? '✨ Source: Gemini (taste-based recommendations)'
+        : '📜 Source: History (Gemini not configured or unavailable)';
+
+      const embed = EmbedFactory.success(
+        'Random Playback',
+        `${sourceLine}\n\n${queuedTitles.map((title, i) => `**${i + 1}.** ${title}`).join('\n')}`
+      );
+
+      await interaction.editReply({ embeds: [embed] });
+    } catch (error: any) {
+      logger.error('Error playing random music', error);
+      await interaction.editReply({
+        embeds: [
+          EmbedFactory.error(
+            'Random Playback Error',
+            error.message || 'Failed to queue random tracks.'
+          ),
+        ],
+      });
+    }
   }
 }

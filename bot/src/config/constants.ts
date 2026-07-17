@@ -30,6 +30,12 @@ export const config = {
     apiKey: process.env.YOUTUBE_API_KEY || '',
   },
 
+  // Gemini (for /music random recommendations)
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY || '',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  },
+
   // Music Settings
   music: {
     maxQueueSize: parseInt(process.env.MUSIC_MAX_QUEUE_SIZE || '100'),
