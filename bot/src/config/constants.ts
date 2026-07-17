@@ -33,7 +33,7 @@ export const config = {
   // Gemini (for /music random recommendations)
   gemini: {
     apiKey: process.env.GEMINI_API_KEY || '',
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+    model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
   },
 
   // Music Settings
