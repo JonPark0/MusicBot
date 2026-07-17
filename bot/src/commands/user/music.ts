@@ -123,7 +123,7 @@ export class MusicCommand {
         .addIntegerOption((option) =>
           option
             .setName('count')
-            .setDescription('Number of tracks to queue (default 5)')
+            .setDescription('Number of tracks to queue (default 1)')
             .setRequired(false)
             .setMinValue(1)
             .setMaxValue(10)
@@ -598,7 +598,7 @@ export class MusicCommand {
 
     const modeInput = (interaction.options.get('mode')?.value as string) || 'previous';
     const scopeInput = (interaction.options.get('scope')?.value as string) || 'server';
-    const count = (interaction.options.get('count')?.value as number) || 5;
+    const count = (interaction.options.get('count')?.value as number) || 1;
 
     const mode = modeInput === 'discover' ? 'discover' : 'mix';
     const userId = scopeInput === 'me' ? interaction.user.id : undefined;
