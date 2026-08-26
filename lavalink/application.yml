@@ -55,6 +55,14 @@ plugins:
       ipBlocks: []
       excludedIps: []
       strategy: "RotateOnBan"
+    pot:
+      # PoToken + visitorData bypass YouTube's bot-detection ("Sign in to
+      # confirm you're not a bot" / spurious "This video requires login").
+      # Generate both with https://github.com/iv-org/youtube-trusted-session-generator
+      # (no Google account needed) and set YT_POTOKEN / YT_VISITOR_DATA in .env.
+      # Only applies to the WEB and WEBEMBEDDED clients.
+      token: "${YT_POTOKEN:}"
+      visitorData: "${YT_VISITOR_DATA:}"
 
 metrics:
   prometheus:
