@@ -44,10 +44,11 @@ plugins:
     allowDirectPlaylistIds: true
     clients:
       - ANDROID_VR
-      - MUSIC
       - WEB
+      - MWEB
       - WEBEMBEDDED
-      - TVHTML5EMBEDDED
+      - TVHTML5_SIMPLY
+      - MUSIC
     rotation:
       rotatingIPs: []
       retryLimit: 0
