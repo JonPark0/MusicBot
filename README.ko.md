@@ -24,7 +24,7 @@ Lavalink를 지원하는 강력한 셀프 호스팅 Discord 음악 봇입니다.
 
 ```
 Docker Compose 스택
-├── Discord Bot (Node.js 22 / TypeScript 5.9)
+├── Discord Bot (Node.js 24 / TypeScript 5.9)
 ├── Lavalink v4 오디오 서버
 ├── PostgreSQL 17 데이터베이스
 └── Redis 7 캐시
@@ -32,7 +32,7 @@ Docker Compose 스택
 
 ## 기술 스택
 
-- **Discord Bot**: Node.js 22, TypeScript 5.9, discord.js v14.24
+- **Discord Bot**: Node.js 24, TypeScript 5.9, discord.js v14.24
 - **음악**: Lavalink v4, lavalink-client v2.5, @discordjs/voice 0.19
 - **데이터베이스**: PostgreSQL 17
 - **캐시**: Redis 7

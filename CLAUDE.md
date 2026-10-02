@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-A Discord music streaming bot built for self-hosted deployment on homeservers with Docker. The bot uses TypeScript (Node.js 22) with Lavalink v4 for high-quality audio streaming from multiple platforms.
+A Discord music streaming bot built for self-hosted deployment on homeservers with Docker. The bot uses TypeScript (Node.js 24) with Lavalink v4 for high-quality audio streaming from multiple platforms.
 
 **Main Technologies:**
-- **Bot**: TypeScript 5.9, discord.js v14.24, Node.js 22
+- **Bot**: TypeScript 5.9, discord.js v14.24, Node.js 24
 - **Music**: Lavalink v4 for audio streaming (YouTube, Spotify, SoundCloud, Bandcamp, Twitch)
 - **Infrastructure**: PostgreSQL 17, Redis 7, Docker Compose
 

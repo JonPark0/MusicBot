@@ -24,7 +24,7 @@ A powerful, self-hosted Discord music bot with Lavalink support, designed for pe
 
 ```
 Docker Compose Stack
-├── Discord Bot (Node.js 22 / TypeScript 5.9)
+├── Discord Bot (Node.js 24 / TypeScript 5.9)
 ├── Lavalink v4 Audio Server
 ├── PostgreSQL 17 Database
 └── Redis 7 Cache
@@ -32,7 +32,7 @@ Docker Compose Stack
 
 ## Tech Stack
 
-- **Discord Bot**: Node.js 22, TypeScript 5.9, discord.js v14.24
+- **Discord Bot**: Node.js 24, TypeScript 5.9, discord.js v14.24
 - **Music**: Lavalink v4, lavalink-client v2.5, @discordjs/voice 0.19
 - **Database**: PostgreSQL 17
 - **Cache**: Redis 7

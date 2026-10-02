@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:24-alpine
 
 # Install required dependencies for voice and audio processing
 RUN apk add --no-cache \
