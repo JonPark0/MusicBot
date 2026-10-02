@@ -82,7 +82,8 @@ class DiscordBot {
       // Register slash commands per guild so a restart is all it takes to apply changes.
       // Done before Lavalink init so commands still register if Lavalink is down.
       try {
-        await clearGlobalCommands();
+        const removed = await clearGlobalCommands();
+        if (removed > 0) logger.info(`Removed ${removed} stale global slash command(s)`);
       } catch (error) {
         logger.warn('Failed to clear global slash commands', error);
       }
