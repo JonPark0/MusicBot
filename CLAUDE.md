@@ -55,11 +55,8 @@ docker compose up -d
 docker compose logs -f discord-bot
 docker compose logs -f lavalink
 
-# Deploy slash commands (required after changes to command definitions)
-docker compose exec discord-bot npm run deploy-commands
-
-# Restart services after code changes
-docker compose restart discord-bot
+# Apply code or slash command changes (commands are re-registered per guild on startup)
+docker compose up -d --build discord-bot
 
 # Rebuild after dependency changes
 docker compose up -d --build discord-bot
@@ -84,10 +81,6 @@ npm run dev
 
 # Watch mode (auto-rebuild on changes)
 npm run watch
-
-# Deploy slash commands to Discord
-npm run deploy-commands        # Development
-npm run deploy-commands:prod   # Production
 ```
 
 ### Database Operations
@@ -233,7 +226,7 @@ docker compose exec redis redis-cli -a your_redis_password ping
 1. Create command file in `bot/src/commands/admin/` or `bot/src/commands/user/`
 2. Implement command class with `data` (SlashCommandBuilder) and `execute` method
 3. Register in `bot/src/index.ts` via `interactionHandler.registerCommand()`
-4. Run `npm run deploy-commands` to register with Discord
+4. Restart the bot — on `clientReady` it clears global commands and registers the set per guild ([bot/src/commands/registry.ts](bot/src/commands/registry.ts)); `guildCreate` does the same for newly joined guilds
 5. Test in Discord server
 
 ### Modifying Database Schema

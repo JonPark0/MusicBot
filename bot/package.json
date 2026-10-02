@@ -7,9 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
-    "watch": "tsc -w",
-    "deploy-commands": "ts-node src/deploy-commands.ts",
-    "deploy-commands:prod": "node dist/deploy-commands.js"
+    "watch": "tsc -w"
   },
   "keywords": [
     "discord",

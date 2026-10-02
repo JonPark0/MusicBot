@@ -10,6 +10,7 @@ import { initializeMusicPlayer, getMusicPlayer } from './services/music/player';
 // Import commands
 import { MusicAdminCommand } from './commands/admin/music-admin';
 import { MusicCommand } from './commands/user/music';
+import { syncGuildCommands, clearGlobalCommands } from './commands/registry';
 
 // Validate required environment variables
 function validateEnvironment() {
@@ -64,11 +65,37 @@ class DiscordBot {
     this.interactionHandler.registerCommand(new MusicCommand());
   }
 
+  private commandBody() {
+    return this.interactionHandler.getCommands().map((command) => command.data.toJSON());
+  }
+
+  private async syncCommands(guildId: string) {
+    await syncGuildCommands(guildId, this.commandBody());
+  }
+
   private registerEventHandlers() {
     // Use 'clientReady' instead of 'ready' to avoid deprecation warning in discord.js v15
     this.client.once('clientReady', async () => {
       logger.info(`Bot logged in as ${this.client.user?.tag}`);
       logger.info(`Serving ${this.client.guilds.cache.size} guilds`);
+
+      // Register slash commands per guild so a restart is all it takes to apply changes.
+      // Done before Lavalink init so commands still register if Lavalink is down.
+      try {
+        await clearGlobalCommands();
+      } catch (error) {
+        logger.warn('Failed to clear global slash commands', error);
+      }
+      let synced = 0;
+      for (const [guildId, guild] of this.client.guilds.cache) {
+        try {
+          await this.syncCommands(guildId);
+          synced++;
+        } catch (error) {
+          logger.warn(`Failed to register slash commands for ${guild.name} (${guildId})`, error);
+        }
+      }
+      logger.info(`Slash commands registered in ${synced}/${this.client.guilds.cache.size} guilds`);
 
       // Initialize music player
       const musicPlayer = initializeMusicPlayer(this.client);
@@ -104,6 +131,16 @@ class DiscordBot {
         await this.messageHandler.handleMessage(message);
       } catch (error) {
         logger.error('Unhandled error in message handler', error);
+      }
+    });
+
+    // Register slash commands as soon as the bot is invited to a new guild
+    this.client.on('guildCreate', async (guild) => {
+      try {
+        await this.syncCommands(guild.id);
+        logger.info(`Joined guild ${guild.name} (${guild.id}) — slash commands registered`);
+      } catch (error) {
+        logger.warn(`Failed to register slash commands for new guild ${guild.id}`, error);
       }
     });
 
