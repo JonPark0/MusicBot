@@ -86,7 +86,9 @@ REDIS_PASSWORD=your_redis_password
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 YOUTUBE_API_KEY=your_youtube_api_key
-YOUTUBE_COOKIE=your_youtube_cookie
+# 선택 - YouTube 서명 해독(cipher) 서버 (비워 두면 공개 인스턴스 https://cipher.kikkia.dev/ 사용)
+YOUTUBE_CIPHER_URL=
+YOUTUBE_CIPHER_PASSWORD=
 
 # Lavalink 설정
 LAVALINK_HOST=lavalink
@@ -150,6 +152,32 @@ LAVALINK_PASSWORD=youshallnotpass
 1. Lavalink가 실행 중인지 확인: `docker compose logs lavalink`
 2. 봇이 서버에서 음성 권한을 가지고 있는지 확인
 3. 음악을 재생하기 전에 음성 채널에 있는지 확인
+
+### YouTube 곡이 재생되지 않음 ("This video cannot be loaded", "requires login", "Must find sig function")
+
+YouTube 쪽 변경으로 Lavalink YouTube 플러그인이 자주 깨집니다. `lavalink/application.yml` 은 이에 맞춰
+조정되어 있습니다 (2026-10 기준).
+
+- **플러그인 버전**: 1.18.2에 아직 포함되지 않은 수정이 들어간 `youtube-source` 미출시 snapshot 빌드를 사용합니다.
+  [릴리스 목록](https://github.com/lavalink-devs/youtube-source/releases)을 확인하고 새 릴리스가 나오면 그 버전으로 되돌리세요.
+- **원격 cipher**: 서명 해독을 [yt-cipher](https://github.com/kikkia/yt-cipher) 서버에 맡깁니다
+  (기본은 공개 인스턴스, 직접 호스팅하려면 `YOUTUBE_CIPHER_URL` / `YOUTUBE_CIPHER_PASSWORD` 설정).
+- **클라이언트 순서**: 상당수 음악 영상에서 YouTube가 대부분의 클라이언트에 플러그인이 재생할 수 없는 SABR 스트림만
+  내려줍니다. `IOS` 와 `ANDROID` 는 아직 직접 URL을 받으므로 목록에 포함되어 있습니다.
+
+Docker 네트워크 안에서 진단하기 (플러그인의 stream 라우트는 실제 재생과 같은 경로를 탑니다):
+
+```bash
+# 전체 클라이언트(실제 재생과 동일), 그 다음 특정 클라이언트 하나만
+docker compose exec lavalink sh -c 'curl -s -o /dev/null -w "%{http_code} %{content_type}
+"   -H "Authorization: $LAVALINK_PASSWORD" http://localhost:2333/youtube/stream/<videoId>'
+docker compose exec lavalink sh -c 'curl -s -o /dev/null -w "%{http_code} %{content_type}
+"   -H "Authorization: $LAVALINK_PASSWORD" "http://localhost:2333/youtube/stream/<videoId>?withClient=IOS"'
+```
+
+Lavalink 로그에 `Failed to resolve X into a Client` 가 보이면 목록의 클라이언트 이름이 더 이상 존재하지 않는 것입니다.
+그래도 로그인을 요구하면 최후의 수단으로 `application.yml` 에 주석 처리된 `TV` 클라이언트 + OAuth 블록을 사용하세요.
+**반드시 버려도 되는 Google 계정만** 사용해야 합니다 (플러그인 README가 계정 정지 가능성을 경고합니다).
 
 ### 봇이 응답하지 않음
 
