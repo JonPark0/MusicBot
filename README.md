@@ -64,11 +64,8 @@ nano .env
 # Go to https://discord.com/developers/applications
 # Select your bot → Bot → Enable "MESSAGE CONTENT INTENT" and "SERVER MEMBERS INTENT"
 
-# 5. Start the services
+# 5. Start the services (slash commands are registered automatically on startup)
 docker compose up -d
-
-# 6. Deploy slash commands
-docker compose exec discord-bot npm run deploy-commands
 ```
 
 ## Configuration
@@ -183,7 +180,7 @@ If tracks still require login, the last resort is the commented-out `TV` client 
 
 1. Check bot logs: `docker compose logs discord-bot`
 2. Verify Discord intents are enabled in Developer Portal
-3. Ensure slash commands are deployed: `docker compose exec discord-bot npm run deploy-commands`
+3. Slash commands are registered on every startup — check the bot log for `Slash commands registered in N/N guilds`, or restart: `docker compose restart discord-bot`
 
 ## Development
 

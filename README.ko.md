@@ -64,11 +64,8 @@ nano .env
 # https://discord.com/developers/applications 접속
 # 봇 선택 → Bot → "MESSAGE CONTENT INTENT"와 "SERVER MEMBERS INTENT" 활성화
 
-# 5. 서비스 시작
+# 5. 서비스 시작 (슬래시 명령어는 시작할 때 자동으로 등록됩니다)
 docker compose up -d
-
-# 6. 슬래시 명령어 배포
-docker compose exec discord-bot npm run deploy-commands
 ```
 
 ## 설정
@@ -183,7 +180,7 @@ Lavalink 로그에 `Failed to resolve X into a Client` 가 보이면 목록의 �
 
 1. 봇 로그 확인: `docker compose logs discord-bot`
 2. Developer Portal에서 Discord Intent가 활성화되었는지 확인
-3. 슬래시 명령어가 배포되었는지 확인: `docker compose exec discord-bot npm run deploy-commands`
+3. 슬래시 명령어는 시작할 때마다 자동 등록됩니다. 봇 로그에서 `Slash commands registered in N/N guilds` 를 확인하거나 재시작: `docker compose restart discord-bot`
 
 ## 개발
 
