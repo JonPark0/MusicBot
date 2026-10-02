@@ -146,7 +146,7 @@ docker compose logs -f lavalink
 2. **Optional Platform APIs**:
    - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` - For better Spotify handling
    - `YOUTUBE_API_KEY` - For higher rate limits
-   - `YOUTUBE_COOKIE` - For bypassing bot detection
+   - `YOUTUBE_CIPHER_URL`, `YOUTUBE_CIPHER_PASSWORD` - yt-cipher server for Lavalink's YouTube plugin (defaults to the public instance; passed to the `lavalink` container, not the bot)
 
 3. **Service URLs** (Docker internal by default):
    - `DATABASE_URL` - PostgreSQL connection string

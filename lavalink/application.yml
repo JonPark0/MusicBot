@@ -4,8 +4,12 @@ server:
 
 lavalink:
   plugins:
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.0"
-      snapshot: false
+    # Unreleased snapshot of youtube-source main (2026-10). 1.18.2 (latest release) lacks the
+    # TV client User-Agent fix (#233) and cipher connection-leak fix (#245). The maintainer has
+    # no release schedule (#244) — switch back to a release (snapshot: false) once one ships.
+    # Releases: https://github.com/lavalink-devs/youtube-source/releases
+    - dependency: "dev.lavalink.youtube:youtube-plugin:2be8e542d3f6f178e048dca565892684c2e40177"
+      snapshot: true
   server:
     password: "${LAVALINK_PASSWORD:youshallnotpass}"
     sources:
@@ -42,18 +46,36 @@ plugins:
     allowSearch: true
     allowDirectVideoIds: true
     allowDirectPlaylistIds: true
+    # Clients are tried in order. MUSIC only handles search (no playback).
+    # Valid names: MUSIC, WEB, MWEB, WEBEMBEDDED, ANDROID, ANDROID_MUSIC, ANDROID_VR, IOS, TV, TVHTML5_SIMPLY
+    # (unknown names are skipped with "Failed to resolve X into a Client").
+    # Tested 2026-10-02 from a residential IP: for many label/MV videos YouTube now returns formats
+    # with no direct URL (SABR-only "serverAbrStreamingUrl"), which this plugin can't play, on
+    # ANDROID_VR / WEB / MWEB / WEBEMBEDDED / TVHTML5_SIMPLY. IOS (AAC) and ANDROID still get direct
+    # URLs for those. ANDROID_VR stays first because it returns Opus (no transcoding) when it works.
     clients:
-      - ANDROID_TESTSUITE
-      - ANDROID_VR
-      - ANDROID_LITE
       - MUSIC
+      - ANDROID_VR
+      - IOS
+      - ANDROID
       - WEB
-    rotation:
-      rotatingIPs: []
-      retryLimit: 0
-      ipBlocks: []
-      excludedIps: []
-      strategy: "RotateOnBan"
+      - TVHTML5_SIMPLY
+    # YouTube's player script changes break local signature deciphering ("Must find sig function"),
+    # so deciphering is delegated to a yt-cipher server. Default is the public instance
+    # (no password, 10 req/s rate limit, no uptime guarantee). To self-host kikkia/yt-cipher,
+    # set YOUTUBE_CIPHER_URL / YOUTUBE_CIPHER_PASSWORD in .env. An empty password sends no header.
+    remoteCipher:
+      url: "${YOUTUBE_CIPHER_URL:https://cipher.kikkia.dev/}"
+      password: "${YOUTUBE_CIPHER_PASSWORD:}"
+      userAgent: "discord-music-bot"
+    # Last resort if videos still fail with "This video requires login" / "Sign in to confirm
+    # you're not a bot": add TV to the clients list and enable OAuth below.
+    # WARNING: use a throwaway Google account only — the plugin README warns OAuth use can get
+    # the account terminated. On first start, follow the device-code login printed in the
+    # Lavalink log, then paste the refresh token it logs into refreshToken.
+    # oauth:
+    #   enabled: true
+    #   refreshToken: "paste the refresh token from the Lavalink log here"
 
 metrics:
   prometheus:

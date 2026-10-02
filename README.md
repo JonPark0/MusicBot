@@ -86,7 +86,9 @@ REDIS_PASSWORD=your_redis_password
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 YOUTUBE_API_KEY=your_youtube_api_key
-YOUTUBE_COOKIE=your_youtube_cookie
+# Optional - YouTube signature cipher server (empty = public https://cipher.kikkia.dev/)
+YOUTUBE_CIPHER_URL=
+YOUTUBE_CIPHER_PASSWORD=
 
 # Lavalink Configuration
 LAVALINK_HOST=lavalink
@@ -150,6 +152,32 @@ LAVALINK_PASSWORD=youshallnotpass
 1. Check Lavalink is running: `docker compose logs lavalink`
 2. Verify bot has voice permissions in your server
 3. Ensure you're in a voice channel before playing music
+
+### YouTube tracks fail ("This video cannot be loaded", "requires login", "Must find sig function")
+
+YouTube changes frequently break the Lavalink YouTube plugin. `lavalink/application.yml` is tuned for this
+(state as of 2026-10):
+
+- **Plugin version**: an unreleased snapshot of `youtube-source` with fixes not yet in 1.18.2. Check
+  [releases](https://github.com/lavalink-devs/youtube-source/releases) and switch back to a release when one ships.
+- **Remote cipher**: signature deciphering goes to a [yt-cipher](https://github.com/kikkia/yt-cipher) server
+  (public instance by default; set `YOUTUBE_CIPHER_URL` / `YOUTUBE_CIPHER_PASSWORD` to self-host).
+- **Client order**: for many music videos YouTube now only offers SABR streams to most clients, which the plugin
+  can't play; `IOS` and `ANDROID` still get direct URLs, so they are kept in the list.
+
+Diagnose from inside the Docker network (the plugin's stream route exercises the same playback path):
+
+```bash
+# All clients (what playback does), then a single client
+docker compose exec lavalink sh -c 'curl -s -o /dev/null -w "%{http_code} %{content_type}
+"   -H "Authorization: $LAVALINK_PASSWORD" http://localhost:2333/youtube/stream/<videoId>'
+docker compose exec lavalink sh -c 'curl -s -o /dev/null -w "%{http_code} %{content_type}
+"   -H "Authorization: $LAVALINK_PASSWORD" "http://localhost:2333/youtube/stream/<videoId>?withClient=IOS"'
+```
+
+`Failed to resolve X into a Client` in the Lavalink log means a client name in the list no longer exists.
+If tracks still require login, the last resort is the commented-out `TV` client + OAuth block in
+`application.yml` — **use a throwaway Google account only** (the plugin README warns the account may be terminated).
 
 ### Bot not responding
 

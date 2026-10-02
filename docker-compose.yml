@@ -6,6 +6,10 @@ services:
     restart: unless-stopped
     environment:
       - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
+      # YouTube signature deciphering server (see lavalink/application.yml).
+      # The URL must never be empty, so the public instance is the fallback here too.
+      - YOUTUBE_CIPHER_URL=${YOUTUBE_CIPHER_URL:-https://cipher.kikkia.dev/}
+      - YOUTUBE_CIPHER_PASSWORD=${YOUTUBE_CIPHER_PASSWORD:-}
       - _JAVA_OPTIONS=-Xmx512m -Xms256m
     volumes:
       - ./lavalink/application.yml:/opt/Lavalink/application.yml
@@ -46,7 +50,6 @@ services:
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
       - SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
       - SPOTIFY_CLIENT_SECRET=${SPOTIFY_CLIENT_SECRET}
-      - YOUTUBE_COOKIE=${YOUTUBE_COOKIE:-}
       - LAVALINK_HOST=${LAVALINK_HOST:-lavalink}
       - LAVALINK_PORT=${LAVALINK_PORT:-2333}
       - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
