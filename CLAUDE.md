@@ -84,7 +84,7 @@ npm run dev
 ```
 
 The bot is an ES module. Production runs the compiled `dist/` because Node's built-in
-TypeScript type stripping keeps roughly 15–20 MB extra resident memory for the process lifetime;
+TypeScript type stripping keeps about 14–19 MB extra resident memory for the process lifetime;
 it is only used for `npm run dev`. That requires source that Node can run as-is (enforced by
 `tsconfig.json`):
 
