@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, PermissionFlagsBits, GuildMember } from 'discord.js';
-import { db } from '../database/client';
-import { logger } from '../utils/logger';
+import { db } from '../database/client.ts';
+import { logger } from '../utils/logger.ts';
 
 export class PermissionManager {
   /**

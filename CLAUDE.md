@@ -73,15 +73,24 @@ cd bot/
 # Install dependencies
 npm install
 
-# Build TypeScript
+# Type-check only (no output)
+npm run typecheck
+
+# Compile src/ to dist/ (what the Docker image runs: node dist/index.js)
 npm run build
 
-# Development mode with ts-node (hot reload)
+# Development mode: Node runs src/index.ts directly and restarts on changes
 npm run dev
-
-# Watch mode (auto-rebuild on changes)
-npm run watch
 ```
+
+The bot is an ES module. Production runs the compiled `dist/` because Node's built-in
+TypeScript type stripping keeps about 14–19 MB extra resident memory for the process lifetime;
+it is only used for `npm run dev`. That requires source that Node can run as-is (enforced by
+`tsconfig.json`):
+
+- Relative imports use the `.ts` extension (`import { db } from '../database/client.ts'`); `tsc` rewrites them to `.js` in `dist/`
+- Type-only imports use `import type` / `{ type X }`
+- No `enum`, `namespace` or constructor parameter properties — use `as const` objects (see `LoopMode` in [queue.ts](bot/src/services/music/queue.ts))
 
 ### Database Operations
 

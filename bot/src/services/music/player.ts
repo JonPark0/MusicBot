@@ -1,8 +1,8 @@
 import { VoiceChannel, GuildMember, Client } from 'discord.js';
-import { LoopMode } from './queue';
-import { MusicStreamingService, Track } from './streaming';
-import { logger } from '../../utils/logger';
-import { db } from '../../database/client';
+import { LoopMode } from './queue.ts';
+import { MusicStreamingService, type Track } from './streaming.ts';
+import { logger } from '../../utils/logger.ts';
+import { db } from '../../database/client.ts';
 
 export class MusicPlayer {
   private streamingService: MusicStreamingService;
@@ -24,11 +24,12 @@ export class MusicPlayer {
     manager.on('trackStart', (player, track) => {
       logger.info('Playing track', {
         guildId: player.guildId,
-        title: track.info?.title,
-        url: track.info?.uri,
+        title: track?.info?.title,
+        url: track?.info?.uri,
       });
 
       // Save to history
+      if (!track) return;
       this.saveToHistory(player.guildId, track).catch((error) => {
         logger.error('Failed to save music history', error);
       });
@@ -38,7 +39,7 @@ export class MusicPlayer {
     manager.on('trackEnd', (player, track, reason) => {
       logger.debug('Track finished', {
         guildId: player.guildId,
-        title: track.info?.title,
+        title: track?.info?.title,
         reason,
       });
     });
@@ -52,7 +53,7 @@ export class MusicPlayer {
     manager.on('trackStuck', (player, track) => {
       logger.warn('Track stuck', {
         guildId: player.guildId,
-        title: track.info?.title,
+        title: track?.info?.title,
       });
     });
 

@@ -1,6 +1,6 @@
 import { LavalinkManager, LavalinkNode } from 'lavalink-client';
 import { Client, GatewayDispatchEvents } from 'discord.js';
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger.ts';
 
 export interface Track {
   title: string;
@@ -131,7 +131,7 @@ export class MusicStreamingService {
       // Initialize the manager - this will connect to the nodes
       await this.manager.init({
         id: clientId,
-        username: this.manager.options.client.username || 'DiscordBot',
+        username: this.manager.options.client?.username || 'DiscordBot',
       });
       this.initialized = true;
       logger.info('Lavalink manager initialized and connected');

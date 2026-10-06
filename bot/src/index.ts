@@ -1,16 +1,16 @@
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
-import { config } from './config/constants';
-import { logger } from './utils/logger';
-import { db } from './database/client';
-// import { cache } from './utils/cache';  // Disabled - Redis not currently used
-import { InteractionHandler } from './handlers/interactionHandler';
-import { MessageHandler } from './handlers/messageHandler';
-import { initializeMusicPlayer, getMusicPlayer } from './services/music/player';
+import { config } from './config/constants.ts';
+import { logger } from './utils/logger.ts';
+import { db } from './database/client.ts';
+// import { cache } from './utils/cache.ts';  // Disabled - Redis not currently used
+import { InteractionHandler } from './handlers/interactionHandler.ts';
+import { MessageHandler } from './handlers/messageHandler.ts';
+import { initializeMusicPlayer, getMusicPlayer } from './services/music/player.ts';
 
 // Import commands
-import { MusicAdminCommand } from './commands/admin/music-admin';
-import { MusicCommand } from './commands/user/music';
-import { syncGuildCommands, clearGlobalCommands } from './commands/registry';
+import { MusicAdminCommand } from './commands/admin/music-admin.ts';
+import { MusicCommand } from './commands/user/music.ts';
+import { syncGuildCommands, clearGlobalCommands } from './commands/registry.ts';
 
 // Validate required environment variables
 function validateEnvironment() {

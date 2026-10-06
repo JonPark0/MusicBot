@@ -1,6 +1,6 @@
-import { createClient, RedisClientType } from 'redis';
-import { config } from '../config/constants';
-import { logger } from './logger';
+import { createClient, type RedisClientType } from 'redis';
+import { config } from '../config/constants.ts';
+import { logger } from './logger.ts';
 
 class CacheManager {
   private client: RedisClientType | null = null;

@@ -1,6 +1,6 @@
-import { Client, Collection, ChatInputCommandInteraction, Interaction } from 'discord.js';
-import { logger } from '../utils/logger';
-import { EmbedFactory } from '../utils/embeds';
+import { Client, Collection, ChatInputCommandInteraction, type Interaction } from 'discord.js';
+import { logger } from '../utils/logger.ts';
+import { EmbedFactory } from '../utils/embeds.ts';
 
 export interface Command {
   data: any;

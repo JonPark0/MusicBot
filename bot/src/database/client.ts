@@ -1,6 +1,6 @@
-import { Pool, QueryResult } from 'pg';
-import { config } from '../config/constants';
-import { logger } from '../utils/logger';
+import { Pool, type QueryResult } from 'pg';
+import { config } from '../config/constants.ts';
+import { logger } from '../utils/logger.ts';
 
 class Database {
   private pool: Pool;
