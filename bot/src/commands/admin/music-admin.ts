@@ -4,10 +4,10 @@ import {
   ChannelType,
   PermissionFlagsBits,
 } from 'discord.js';
-import { db } from '../../database/client';
-import { logger } from '../../utils/logger';
-import { EmbedFactory } from '../../utils/embeds';
-import { PermissionManager } from '../../middleware/permissions';
+import { db } from '../../database/client.ts';
+import { logger } from '../../utils/logger.ts';
+import { EmbedFactory } from '../../utils/embeds.ts';
+import { PermissionManager } from '../../middleware/permissions.ts';
 
 export class MusicAdminCommand {
   data = new SlashCommandBuilder()

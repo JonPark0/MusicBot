@@ -1,11 +1,11 @@
 import {
-  APIApplicationCommand,
+  type APIApplicationCommand,
   ApplicationCommandType,
   REST,
   Routes,
-  RESTPostAPIApplicationCommandsJSONBody,
+  type RESTPostAPIApplicationCommandsJSONBody,
 } from 'discord.js';
-import { config } from '../config/constants';
+import { config } from '../config/constants.ts';
 
 // Slash commands are registered per guild on startup and when the bot joins a guild,
 // because guild command updates show up in Discord immediately (global ones can lag).

@@ -1,11 +1,12 @@
-import { Track } from './streaming';
-import { logger } from '../../utils/logger';
+import type { Track } from './streaming.ts';
+import { logger } from '../../utils/logger.ts';
 
-export enum LoopMode {
-  OFF = 'off',
-  TRACK = 'track',
-  QUEUE = 'queue',
-}
+export const LoopMode = {
+  OFF: 'off',
+  TRACK: 'track',
+  QUEUE: 'queue',
+} as const;
+export type LoopMode = (typeof LoopMode)[keyof typeof LoopMode];
 
 export class MusicQueue {
   private guildId: string;

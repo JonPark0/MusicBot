@@ -1,9 +1,9 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, GuildMember, VoiceChannel } from 'discord.js';
-import { logger } from '../../utils/logger';
-import { EmbedFactory } from '../../utils/embeds';
-import { getMusicPlayer } from '../../services/music/player';
-import { LoopMode } from '../../services/music/queue';
-import { PermissionManager } from '../../middleware/permissions';
+import { logger } from '../../utils/logger.ts';
+import { EmbedFactory } from '../../utils/embeds.ts';
+import { getMusicPlayer } from '../../services/music/player.ts';
+import { LoopMode } from '../../services/music/queue.ts';
+import { PermissionManager } from '../../middleware/permissions.ts';
 
 export class MusicCommand {
   data = new SlashCommandBuilder()

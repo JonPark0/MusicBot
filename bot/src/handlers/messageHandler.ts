@@ -1,5 +1,5 @@
 import { Message } from 'discord.js';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.ts';
 
 export class MessageHandler {
   constructor() {}
