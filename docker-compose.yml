@@ -36,9 +36,16 @@ services:
 
   # Discord Bot (Node.js)
   discord-bot:
+    # Built by GitHub Actions (.github/workflows/image.yml) and pulled from
+    # GHCR; IMAGE_TAG=sha-<commit> in the environment runs an earlier build.
+    # `build` stays for working locally: `docker compose up --build`.
+    image: ghcr.io/jonpark0/musicbot:${IMAGE_TAG:-main}
     build:
       context: ./bot
       dockerfile: Dockerfile
+    labels:
+      # deployed by hand from our own builds, so Diun needn't watch it
+      diun.enable: "false"
     container_name: discord-bot
     env_file: .env
     environment:
