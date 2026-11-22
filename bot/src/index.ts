@@ -2,7 +2,6 @@ import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import { config } from './config/constants.ts';
 import { logger } from './utils/logger.ts';
 import { db } from './database/client.ts';
-// import { cache } from './utils/cache.ts';  // Disabled - Redis not currently used
 import { InteractionHandler } from './handlers/interactionHandler.ts';
 import { MessageHandler } from './handlers/messageHandler.ts';
 import { initializeMusicPlayer, getMusicPlayer } from './services/music/player.ts';
@@ -18,7 +17,6 @@ function validateEnvironment() {
     'DISCORD_TOKEN',
     'DISCORD_CLIENT_ID',
     'DATABASE_URL',
-    // 'REDIS_URL',  // Disabled - Redis not currently used
   ];
 
   const missing = required.filter((key) => !process.env[key]);
@@ -175,10 +173,6 @@ class DiscordBot {
 
   async start() {
     try {
-      // Connect to Redis (DISABLED - Redis not currently used, saves 64MB memory)
-      // await cache.connect();
-      // logger.info('Redis connected');
-
       // Login to Discord
       await this.client.login(config.discord.token);
     } catch (error) {
@@ -189,7 +183,6 @@ class DiscordBot {
 
   async shutdown() {
     logger.info('Shutting down bot...');
-    // await cache.disconnect();  // Disabled - Redis not currently used
     await db.close();
     this.client.destroy();
     logger.info('Bot shut down successfully');

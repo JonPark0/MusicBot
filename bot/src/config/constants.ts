@@ -1,6 +1,9 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
+// Load bot/.env for `npm run dev`. In Docker, compose supplies the variables and there is no file.
+try {
+  process.loadEnvFile();
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+}
 
 export const config = {
   // Discord
@@ -12,11 +15,6 @@ export const config = {
   // Database
   database: {
     url: process.env.DATABASE_URL || '',
-  },
-
-  // Redis
-  redis: {
-    url: process.env.REDIS_URL || 'redis://redis:6379',
   },
 
   // Spotify (for music)

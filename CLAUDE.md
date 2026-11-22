@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-A Discord music streaming bot built for self-hosted deployment on homeservers with Docker. The bot uses TypeScript (Node.js 24) with Lavalink v4 for high-quality audio streaming from multiple platforms.
+A Discord music streaming bot built for self-hosted deployment on homeservers with Docker. The bot uses TypeScript (Node.js 26) with Lavalink v4 for high-quality audio streaming from multiple platforms.
 
 **Main Technologies:**
-- **Bot**: TypeScript 5.9, discord.js v14.24, Node.js 24
+- **Bot**: TypeScript 7, discord.js v14.28, Node.js 26
 - **Music**: Lavalink v4 for audio streaming (YouTube, Spotify, SoundCloud, Bandcamp, Twitch)
-- **Infrastructure**: PostgreSQL 17, Redis 7, Docker Compose
+- **Infrastructure**: PostgreSQL 18, Docker Compose
 
 ## Architecture
 
@@ -18,7 +18,7 @@ A Discord music streaming bot built for self-hosted deployment on homeservers wi
 ```
 Discord Bot (TypeScript)
 ├── Music: WebSocket → Lavalink (port 2333)
-└── Data: PostgreSQL + Redis
+└── Data: PostgreSQL
 ```
 
 All services communicate via internal Docker network. No ports exposed to host by default.
@@ -102,24 +102,6 @@ docker compose exec postgres psql -U postgres -d discord_bot
 docker compose exec postgres psql -U postgres -d discord_bot \
   -c "SELECT * FROM music_channels;"
 
-# Backup database
-docker compose exec postgres pg_dump -U postgres discord_bot > backup.sql
-
-# Restore database
-cat backup.sql | docker compose exec -T postgres psql -U postgres -d discord_bot
-```
-
-### Redis Operations
-
-```bash
-# Connect to Redis CLI
-docker compose exec redis redis-cli -a your_redis_password
-
-# Clear all cache
-FLUSHALL
-
-# Monitor real-time commands
-MONITOR
 ```
 
 ### Lavalink Operations
@@ -143,7 +125,6 @@ docker compose logs -f lavalink
    - `DISCORD_TOKEN` - Discord bot token
    - `DISCORD_CLIENT_ID` - Discord application ID
    - `POSTGRES_PASSWORD` - Database password
-   - `REDIS_PASSWORD` - Redis password
 
 2. **Optional Platform APIs**:
    - `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` - For better Spotify handling
@@ -152,7 +133,6 @@ docker compose logs -f lavalink
 
 3. **Service URLs** (Docker internal by default):
    - `DATABASE_URL` - PostgreSQL connection string
-   - `REDIS_URL` - Redis connection string
    - `LAVALINK_HOST`, `LAVALINK_PORT`, `LAVALINK_PASSWORD`
 
 ### Discord Developer Portal Requirements
@@ -192,12 +172,8 @@ Without these, the bot will not function correctly.
 
 ### Caching Strategy
 
-1. **Redis Cache**:
-   - User session data
-   - Rate limiting counters
-   - Guild configurations (optional)
+There is no Redis; state the bot needs between restarts lives in PostgreSQL. In memory only:
 
-2. **In-Memory Cache**:
    - Guild configurations
    - Active player states
    - Voice connection states
@@ -223,9 +199,6 @@ curl -H "Authorization: youshallnotpass" http://localhost:2333/version
 
 # PostgreSQL health
 docker compose exec postgres pg_isready -U postgres -d discord_bot
-
-# Redis health
-docker compose exec redis redis-cli -a your_redis_password ping
 ```
 
 ## Common Development Tasks

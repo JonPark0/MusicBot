@@ -1,7 +1,7 @@
 # MusicBot - Discord 음악 스트리밍 봇
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7-blue.svg)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
 
 한국어 | [English](./README.md)
@@ -24,18 +24,16 @@ Lavalink를 지원하는 강력한 셀프 호스팅 Discord 음악 봇입니다.
 
 ```
 Docker Compose 스택
-├── Discord Bot (Node.js 24 / TypeScript 5.9)
+├── Discord Bot (Node.js 26 / TypeScript 7)
 ├── Lavalink v4 오디오 서버
-├── PostgreSQL 17 데이터베이스
-└── Redis 7 캐시
+└── PostgreSQL 18 데이터베이스
 ```
 
 ## 기술 스택
 
-- **Discord Bot**: Node.js 24, TypeScript 5.9, discord.js v14.24
-- **음악**: Lavalink v4, lavalink-client v2.5, @discordjs/voice 0.19
-- **데이터베이스**: PostgreSQL 17
-- **캐시**: Redis 7
+- **Discord Bot**: Node.js 26, TypeScript 7, discord.js v14.28
+- **음악**: Lavalink v4, lavalink-client v2.11
+- **데이터베이스**: PostgreSQL 18
 - **배포**: Docker, Docker Compose
 
 ## 요구 사항
@@ -77,7 +75,6 @@ docker compose up -d
 DISCORD_TOKEN=your_discord_bot_token
 DISCORD_CLIENT_ID=your_client_id
 POSTGRES_PASSWORD=your_secure_password
-REDIS_PASSWORD=your_redis_password
 
 # 선택 - 음악 플랫폼 (API 키 없이도 작동)
 SPOTIFY_CLIENT_ID=your_spotify_client_id
@@ -129,7 +126,6 @@ LAVALINK_PASSWORD=youshallnotpass
 
 - 서비스 간 내부 네트워크 전용 통신
 - 호스트 네트워크에 노출되는 포트 없음
-- Redis 인증 필수
 - 환경 기반 인증 정보 관리
 - 자동 리소스 정리
 
@@ -140,7 +136,6 @@ LAVALINK_PASSWORD=youshallnotpass
   - Bot: ~200MB RAM
   - Lavalink: ~500MB RAM
   - PostgreSQL: ~100MB RAM
-  - Redis: ~50MB RAM
 
 ## 문제 해결
 
