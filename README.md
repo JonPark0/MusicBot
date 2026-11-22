@@ -1,7 +1,7 @@
 # MusicBot - Discord Music Streaming Bot
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7-blue.svg)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
 
 [한국어](./README.ko.md) | English
@@ -24,18 +24,16 @@ A powerful, self-hosted Discord music bot with Lavalink support, designed for pe
 
 ```
 Docker Compose Stack
-├── Discord Bot (Node.js 24 / TypeScript 5.9)
+├── Discord Bot (Node.js 26 / TypeScript 7)
 ├── Lavalink v4 Audio Server
-├── PostgreSQL 17 Database
-└── Redis 7 Cache
+└── PostgreSQL 18 Database
 ```
 
 ## Tech Stack
 
-- **Discord Bot**: Node.js 24, TypeScript 5.9, discord.js v14.24
-- **Music**: Lavalink v4, lavalink-client v2.5, @discordjs/voice 0.19
-- **Database**: PostgreSQL 17
-- **Cache**: Redis 7
+- **Discord Bot**: Node.js 26, TypeScript 7, discord.js v14.28
+- **Music**: Lavalink v4, lavalink-client v2.11
+- **Database**: PostgreSQL 18
 - **Deployment**: Docker, Docker Compose
 
 ## Prerequisites
@@ -77,7 +75,6 @@ Edit `.env` file with your credentials:
 DISCORD_TOKEN=your_discord_bot_token
 DISCORD_CLIENT_ID=your_client_id
 POSTGRES_PASSWORD=your_secure_password
-REDIS_PASSWORD=your_redis_password
 
 # Optional - Music Platforms (work without API keys)
 SPOTIFY_CLIENT_ID=your_spotify_client_id
@@ -129,7 +126,6 @@ LAVALINK_PASSWORD=youshallnotpass
 
 - Internal network-only communication between services
 - No exposed ports to host network
-- Redis authentication required
 - Environment-based credential management
 - Automatic resource cleanup
 
@@ -140,7 +136,6 @@ LAVALINK_PASSWORD=youshallnotpass
   - Bot: ~200MB RAM
   - Lavalink: ~500MB RAM
   - PostgreSQL: ~100MB RAM
-  - Redis: ~50MB RAM
 
 ## Troubleshooting
 
